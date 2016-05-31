@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang='en'>
+
+<head>
+<meta charset='utf-8'>
+<meta
+	content='width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0'
+	name='viewport'>
+
+<title>Music Visualization</title>
+<link href='scripts/bootstrap-3.3.6-dist/css/bootstrap.min.css'
+	rel='stylesheet' type='text/css'>
+<link href='scripts/dc.js/dc.css' rel='stylesheet' type='text/css'>
+<link href='scripts/d3/lib/colorbrewer/colorbrewer.css' rel='stylesheet'
+	type='text/css'>
+<link href="scripts/jquery-ui-1.11.4.custom/jquery-ui.css"
+	rel="stylesheet" type="text/css">
+<script src='scripts/d3/d3.js' type='text/javascript'></script>
+<script src='scripts/crossfilter/crossfilter.js' type='text/javascript'></script>
+<script src='scripts/dc.js/dc.js' type='text/javascript'></script>
+<script src='scripts/jquery-2.2.3.js' type='text/javascript'></script>
+<script src='scripts/bootstrap-3.3.6-dist/js/bootstrap.min.js'
+	type='text/javascript'></script>
+
+<script src='scripts/d3/lib/colorbrewer/colorbrewer.js'
+	type='text/javascript'></script>
+<script src='scripts/jquery-ui-1.11.4.custom/jquery-ui.js'
+	type='text/javascript'></script>
+<script src='scripts/Guriddo_jqGrid_JS_5/js/i18n/grid.locale-en.js'
+	type='text/javascript'></script>
+<script src='scripts/Guriddo_jqGrid_JS_5/js/jquery.jqGrid.min.js'
+	type='text/javascript'></script>
+<style type="text/css">
+body {
+	font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+	margin: auto;
+	position: relative;
+}
+
+form {
+	position: absolute;
+	right: 10px;
+	top: 10px;
+}
+
+.node {
+	border: solid 1px white;
+	font: 10px sans-serif;
+	line-height: 12px;
+	overflow: hidden;
+	position: absolute;
+	text-indent: 2px;
+}
+
+rect {
+	fill: none;
+	stroke: #fff;
+}
+
+div.tooltip {
+	display: block;
+	position: absolute;
+	padding: 10px;
+	background: white;
+	border-radius: 3px;
+	pointer-events: none;
+	width: 200px;
+	box-shadow: 0px 0px 5px #888;
+	text-align: center;
+	opacity: 1.0;
+}
+
+div.tooltip p {
+	margin: 0px;
+}
+
+div.tooltip h6 {
+	line-height: 20px;
+}
+
+div.tooltip h3 {
+	margin-bottom: 5px;
+}
+.col-centered{
+	float:none;
+	margin: 0 auto;
+}
+</style>
+</head>
+
+<body>
+	<nav class="navbar navbar-default">
+	 <div class="container-fluid">
+		 <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1" style="font-size:14px;">
+			 <ul class="nav navbar-nav">
+				  <li><a href="/index.html">Listening behavior: Time <span class="sr-only">(current)</span></a></li>
+				  <li><a href="/music_vis_line.html">Listening behavior: song attribute</a></li>
+					<li><a href="/barchart.html">Device & Traffic source</a></li>
+				  <li class="active"><a href="/treemap.html">Listening preference</a></li>
+			 </ul>
+		 </div>
+	 </div>
+	</nav>
+
+
+	<div class='container' id='main-container'>
+		<div class='content'>
+			<div class='container' style='font: 12px sans-serif;'>
+				<div class='row'>
+					 <div class="col-sm-8 col-md-8 col-lg-8 col-centered">
+						<h3 style="font-family:'Inconsolata',Monaco; margin-top:50px">What are they listening?</h3>
+					 </div>
+				</div>
+				<div class='row'>
+					 <div style="font-size:14px;font-family:'Inconsolata',Monaco;" class="col-sm-8 col-md-8 col-lg-8 col-centered">
+						 <p>User1 spend most time on listening the album: "jungle book by various artist", following by the artist Warpaint and Woody Guthrie. </p>
+						 <p>User2 is a classic music person, listening mozart, Domenico Scarlatti and the death cab for the cutie.<p>
+					 </div>
+				</div>
+
+				<div class="row">
+					<div class='line-graph col-sm-8 col-md-8 col-lg-8 col-centered'
+						id='treemap_user1'><p>User1</p></div>
+        </div>
+
+				<div class="row">
+					<div style="margin-top:40px;" class='line-graph col-sm-8 col-md-8 col-lg-8 col-centered'
+						id='treemap_user2'><p>User2</p></div>
+
+				</div>
+				</div>
+			</div>
+				<div id="tooltip" class="tooltip" style="display:none;"></div>
+
+	</div>
+
+	<script>
+
+		//this is the max album count to display in the treemap
+		var MAX_ALBUM_COUNT=14;
+
+		//area of the rectangle, text is displayed only if area is higher than this value
+		var MIN_RECT_SIZE_FOR_TEXT=800;
+		var margin = {
+			top : 20,
+			right : 80,
+			bottom : 30,
+			left : 100
+		}, width = $("#treemap_user1").width() - margin.left - margin.right, height = width
+				/ 2 - margin.top - margin.bottom;
+
+
+		function wrap(text, width) {
+			console.log(text);
+			console.log(width);
+			  text.each(function() {
+			    var text = d3.select(this),
+			        words = text.text().split(/\s+/).reverse(),
+			        word,
+			        line = [],
+			        lineNumber = 0,
+			        lineHeight = 1.1, // ems
+			        y = text.attr("y"),
+			        dy = parseFloat(text.attr("dy")),
+			        tspan = text.text(null).append("tspan").attr("x", 0).attr("y", y).attr("dy", dy + "em");
+			    while (word = words.pop()) {
+			      line.push(word);
+			      tspan.text(line.join(" "));
+			      if (tspan.node().getComputedTextLength() > width) {
+			        line.pop();
+			        tspan.text(line.join(" "));
+			        line = [word];
+			        tspan = text.append("tspan").attr("x", 0).attr("y", y).attr("dy", ++lineNumber * lineHeight + dy + "em").text(word);
+			      }
+			    }
+			  });
+			}
+
+		var isLeapYear = function(d) {
+			var year = d.getFullYear();
+			if ((year & 3) != 0)
+				return false;
+			return ((year % 100) != 0 || (year % 400) == 0);
+		};
+
+		function formatMilliseconds(ms) {
+			var hours = Math.floor(ms/3600000);
+			var min = 0;
+			 min = Math.floor( (ms -hours * 3600000) / 60000 );
+			var sec = (ms - hours * 3600000 - min * 60000) / 1000;
+			if(hours>0) return hours+"h "+min+"m "+sec+"s";
+			else if(min>0) return min+"m "+sec+"s";
+			else return sec+"s";
+		}
+		// Get Day of Year
+		var getDOY = function(d) {
+			var dayCount = [ 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304,
+					334 ];
+			var mn = d.getMonth();
+			var dn = d.getDate();
+			var dayOfYear = dayCount[mn] + dn;
+			if (mn > 1 && isLeapYear(d))
+				dayOfYear++;
+			return dayOfYear;
+		};
+
+		function getWeekOfYear(d) {
+			var wd = new Date(d);
+			wd.setHours(0, 0, 0);
+			wd.setDate(wd.getDate() + 4 - (wd.getDay() || 7));
+			if (d.getDay() == wd.getDay())
+				return +Math
+						.ceil((((d - new Date(d.getFullYear(), 0, 1)) / 8.64e7) + 1) / 7);
+			else
+				return 0;
+		}
+
+		var weekFormat = d3.time.format("%w");
+		var weekStringFormat = d3.time.format("%a");
+
+		function fixData(user, d) {
+			var ot = d.timestamp;
+			d.user = user;
+			d.timestamp = new Date(d.timestamp);
+			if (!d.timestamp) {
+				console.error("Invalid timestamp data " + ot);
+				return;
+			}
+			if (isNaN(d.milliseconds_played)) {
+				console.log("Invalid time played " + d.milliseconds_played);
+				return;
+			}
+			d.hour = d.timestamp.getHours();
+			d.weekDay = weekFormat(d.timestamp);
+			//adjust to make Monday start of the week
+			if (d.weekDay == 0)
+				d.weekDay = 6;
+			else
+				d.weekDay -= 1;
+			d.dayOfYear = getDOY(d.timestamp);
+			d.weekOfYear = getWeekOfYear(d.timestamp);
+			d.album_track = d.album_name + "||" + d.track_name;
+			d.artist_track = d.artist_name + "||" + d.track_name;
+		}
+		var parseDate = d3.time.format("%Y/%m/%d %H:%M:%S").parse;
+
+		var metrics = {
+			"hour" : [ {
+				name : "averageMilliseconds",
+				ylabel : "Average Listening Time (milliseconds)"
+			}, {
+				name : "averageValenceScore",
+				ylabel : "Average Valence Score"
+			}, {
+				name : "averageDanceabilityScore",
+				ylabel : "Average Danceability"
+			}, {
+				name : "averageFamiliarityScore",
+				ylabel : "Average Familiarity"
+			}, {
+				name : "averageSongTempo",
+				ylabel : "Average Song Tempo"
+			}, {
+				name : "averageRunnability",
+				ylabel : "Average Runnability"
+			}, {
+				name : "averageEnergy",
+				ylabel : "Average Energy"
+			}, {
+				name : "averagePopularityNormalized",
+				ylabel : "Average Popularity"
+			} ],
+			"week" : [ {
+				name : "averageMilliseconds",
+				ylabel : "Average Listening Time (milliseconds)"
+			}, {
+				name : "averageValenceScore",
+				ylabel : "Average Valence Score"
+			}, {
+				name : "averageDanceabilityScore",
+				ylabel : "Average Danceability"
+			}, {
+				name : "averageFamiliarityScore",
+				ylabel : "Average Familiarity"
+			}, {
+				name : "averageSongTempo",
+				ylabel : "Average Song Tempo"
+			}, {
+				name : "averageRunnability",
+				ylabel : "Average Runnability"
+			}, {
+				name : "averageEnergy",
+				ylabel : "Average Energy"
+			}, {
+				name : "averagePopularityNormalized",
+				ylabel : "Average Popularity"
+			} ]
+		};
+
+		var showChartForUser = null;
+		var selectedIndex = 0;
+
+		$("#user1Radio").on("click", function(evt) {
+			showChartForUser("User1");
+		});
+		$("#user2Radio").on("click", function(evt) {
+
+			showChartForUser("User2");
+		});
+
+		$("#hourButton").on(
+				"click",
+				function(evt) {
+					$("#hourButton").addClass("active");
+					$("#weekButton").removeClass("active");
+					xAxisType = "hour";
+					if (metrics[xAxisType][selectedIndex])
+						showChartForMetric(
+								metrics[xAxisType][selectedIndex]["name"],
+								"hour");
+				});
+		$("#weekButton").on(
+				"click",
+				function(evt) {
+					$("#weekButton").addClass("active");
+					$("#hourButton").removeClass("active");
+					xAxisType = "week";
+					if (metrics[xAxisType][selectedIndex])
+						showChartForMetric(
+								metrics[xAxisType][selectedIndex]["name"],
+								"week");
+
+				});
+
+		var margin = {
+			top : 40,
+			right : 10,
+			bottom : 10,
+			left : 10
+		}, width = $("#treemap_user1").width() - margin.left - margin.right, height = width
+				/ 2 - margin.top - margin.bottom;
+
+	//	var color = d3.scale.category20c();
+		var color = d3.scale.ordinal().range(["#8c510a","#d8b365","#f6e8c3","#c7eae5","#5ab4ac","#01665e"]);
+		//var color = [#d8b365,#f5f5f5,#5ab4ac];
+
+		var treemapUser1 = d3.layout.treemap().size([ width, height ]).sticky(
+				false).value(function(d) {
+			return d.size;
+		}).sort(function(a, b) {
+
+			return a.value - b.value;
+		});
+		var treemapUser2 = d3.layout.treemap().size([ width, height ]).sticky(
+				false).value(function(d) {
+			return d.size;
+		}).sort(function(a, b) {
+
+			return a.value - b.value;
+		});
+
+		d3
+				.csv(
+						"data/treemap_user1.csv",
+						function(error, user1Data) {
+							if (error)
+								throw error;
+							d3
+									.csv(
+											"data/treemap_user2.csv",
+											function(error, user2Data) {
+												if (error)
+													throw error;
+												var data = []; //consolidated user data
+												//just join the user data for now
+												//TODO will need to account for songs that cross hour boundaries
+
+												user1Data.forEach(fixData.bind(
+														undefined, "User1"));
+												user2Data.forEach(fixData.bind(
+														undefined, "User2"));
+												data = user1Data
+														.concat(user2Data);
+
+												var facts = crossfilter(data); // Gets our 'facts' into crossfilter
+												var all = facts.groupAll();
+												var userDimension = facts
+														.dimension(function(d) {
+															return d.user;
+														});
+												var albumKeys = d3
+														.map(
+																data,
+																function(d) {
+																	return d.album_name;
+																}).keys();
+
+												function sortByTotalDescending(
+														a, b) {
+													// Dates will be cast to numbers automagically:
+													return +b.totalMilliseconds
+															- (a.totalMilliseconds);
+												}
+
+												function getSummaryDataForUser(
+														user) {
+													var filteredData = userDimension
+															.filter(user).top(
+																	Infinity);
+													var filteredFacts = crossfilter(filteredData);
+													var trackDimension = filteredFacts
+															.dimension(function(
+																	d) {
+																return d.track_name;
+															});
+													var albumDimension = filteredFacts
+															.dimension(function(
+																	d) {
+																return d.album_name;
+															});
+													// var artistDimension = filteredFacts.dimension(function(d) {
+													//     return d.artist_name;
+													// });
+													var albumTrackDimension = filteredFacts
+															.dimension(function(
+																	d) {
+																return d.album_track;
+															});
+													//var artistTrackDimension = filteredFacts.dimension(function(d) {
+													//    return d.artist_track;
+													//});
+													function addToGroup(p, v) {
+														++p.number;
+														p.artist_name = v.artist_name;
+														p.popularity_normalized = v.popularity_normalized;
+														p.user = user;
+														p.totalMilliseconds += +v.milliseconds_played;
+														p.totalValenceScore += (v.milliseconds_played * ((!v.valence_score || v.valence_score == "null") ? 0
+																: +v.valence_score));
+														p.totalDanceabilityScore += (v.milliseconds_played * ((!v.danceability_score || v.danceability_score == "null") ? 0
+																: +v.danceability_score));
+														p.totalFamiliarityScore += (v.milliseconds_played * ((!v.familiarity_score || v.familiarity_score == "null") ? 0
+																: +v.familiarity_score));
+														p.totalSongTempo += (v.milliseconds_played * ((!v.song_tempo || v.song_tempo == "null") ? 0
+																: +v.song_tempo));
+														p.totalRunnability += (v.milliseconds_played * ((!v.runnability || v.runnability == "null") ? 0
+																: +v.runnability));
+														p.totalEnergy += (v.milliseconds_played * ((!v.energy || v.energy == "null") ? 0
+																: +v.energy));
+														p.totalPopularityNormalized += (v.milliseconds_played * ((!v.popularity_normalized || v.popularity_normalized == "null") ? 0
+																: +v.popularity_normalized));
+														return p;
+													}
+													function removeFromGroup(p,
+															v) {
+														--p.number;
+														p.artist_name = v.artist_name;
+														p.popularity_normalized = v.popularity_normalized;
+														p.user = user;
+														p.totalMilliseconds -= +v.milliseconds_played;
+														p.totalValenceScore -= (v.milliseconds_played * ((!v.valence_score || v.valence_score == "null") ? 0
+																: +v.valence_score));
+														p.totalDanceabilityScore -= (v.milliseconds_played * ((!v.danceability_score || v.danceability_score == "null") ? 0
+																: +v.danceability_score));
+														p.totalFamiliarityScore -= (v.milliseconds_played * ((!v.familiarity_score || v.familiarity_score == "null") ? 0
+																: +v.familiarity_score));
+														p.totalSongTempo -= (v.milliseconds_played * ((!v.song_tempo || v.song_tempo == "null") ? 0
+																: +v.song_tempo));
+														p.totalRunnability -= (v.milliseconds_played * ((!v.runnability || v.runnability == "null") ? 0
+																: +v.runnability));
+														p.totalEnergy -= (v.milliseconds_played * ((!v.energy || v.energy == "null") ? 0
+																: +v.energy));
+														p.totalPopularityNormalized -= (v.milliseconds_played * ((!v.popularity_normalized || v.popularity_normalized == "null") ? 0
+																: +v.popularity_normalized));
+														return p;
+													}
+													function initGroup() {
+														return {
+															number : 0,
+															popularity_normalized: 0,
+															user : user,
+															artist_name: "",
+															totalMilliseconds : 0,
+															totalValenceScore : 0,
+															totalDanceabilityScore : 0,
+															totalFamiliarityScore : 0,
+															totalSongTempo : 0,
+															totalRunnability : 0,
+															totalEnergy : 0,
+															totalPopularityNormalized : 0
+														}
+													}
+													var albumTrackGroup = albumTrackDimension
+															.group()
+															.reduce(
+																	addToGroup,
+																	removeFromGroup,
+																	initGroup);
+													var albums = {};
+													var albumsArray = [];
+
+													var uData = albumTrackGroup
+															.top(Infinity)
+															.sort(
+																	sortByTotalDescending);
+
+													uData
+															.forEach(function(d) {
+																var at = d.key
+																		.split(/\|\|/);
+																var a = at[0];
+																var t = at[1];
+																if (!albums[a]) {
+																	albums[a] = {
+																		name : a,
+																		user : user,
+																		children : []
+																	};
+																	albumsArray
+																			.push(albums[a]);
+																}
+
+																var c = albums[a];
+																c.children
+																		.push({
+																			name : t,
+																			user : user,
+																			type : "song",
+																			size : d.value.totalMilliseconds,
+																			popularity_normalized : d.value.popularity_normalized,
+																			artist_name : d.value.artist_name
+																		});
+															});
+													albumsArray = albumsArray
+															.sort(sortByTotalDescending);
+													return {
+														"name" : "Albums",
+														"user" : user,
+														"children" : albumsArray
+													};
+
+												}
+												var tooltip = $("#tooltip")
+														.tooltip();
+												//tooltip.width = 200;
+												var position = function(e) {
+													var tipHeight = tooltip
+															.outerHeight(), windowWidth = width
+															+ margin.left
+															+ margin.right, tipLeft = e.pageX - 100, tipTop = e.pageY
+															- (tipHeight + 15)
+															+ margin.top;
+													if ((tipLeft + 300) > windowWidth)
+														tipLeft = e.pageX - 400;
+													//tipLeft = Math.min(Math.max(tipLeft, 20), windowWidth - (200 + 40));
+													tooltip.css({
+														top : tipTop,
+														left : tipLeft
+													});
+													;
+												}
+
+												function updateTip(e) {
+													var target = $(e.target);
+													var album = target
+															.parents("g.cell");
+													if (!album.length)
+														return;
+													var albumData = album[0].__data__.parent;
+													var albumName = albumData.name;
+													var songData = target[0].__data__;
+													var tipHtml = [
+
+															'<h5 class="text-gray"><em>Song: ',
+															songData.name,
+															'</em></h5>',
+															(songData.artist_name ? ('<h5 class="text-gray"><em>Artist: '+
+																	songData.artist_name+
+															'</em></h5>'):""),
+															'<h5 class="text-gray"><em>',
+															formatMilliseconds(songData.size),
+															'</em></h5>'
+															]
+															.join('');
+													tooltip.html(tipHtml);
+													position(e);
+													tooltip.show();
+
+												}
+												var svgUser1 = d3
+														.select(
+																"#treemap_user1")
+														.append("svg:svg")
+														.attr("width", width)
+														.attr("height", height)
+														.append("svg:g")
+														.attr("transform",
+																"translate(.5,.5)");
+
+												$(svgUser1[0]).on('mousemove',
+														updateTip)
+														.on('mouseenter',
+																updateTip).on(
+																'mouseleave',
+																tooltip.hide);
+												var svgUser2 = d3
+														.select(
+																"#treemap_user2")
+														.append("svg:svg")
+														.attr("width", width)
+														.attr("height", height)
+														.append("svg:g")
+														.attr("transform",
+																"translate(.5,.5)");
+
+												$(svgUser2[0]).on('mousemove',
+														updateTip)
+														.on('mouseenter',
+																updateTip).on(
+																'mouseleave',
+																tooltip.hide);
+												var firstTime = true;
+												var nodes, node;
+
+												var getParents = function(
+														treemap, svg, nodes) {
+													var parentNames = {}, nodeParents = [];
+													for (var i = 0, len = nodes.length; i < len; i++) {
+														if (!parentNames[nodes[i].parent.name]) {
+															nodeParents
+																	.push(nodes[i].parent);
+															parentNames[nodes[i].parent.name] = true;
+														}
+													}
+													return nodeParents;
+												};
+												var render = function(treemap,
+														svg, data) {
+													node = data, root = data;
+													data.children = data.children
+															.sort(function(a, b) {
+																var aTotal = 0, bTotal = 0;
+																for (var i = 0; i < a.children.length; i++) {
+																	aTotal += a.children[i].size;
+																}
+																for (var i = 0; i < b.children.length; i++) {
+																	bTotal += b.children[i].size;
+																}
+																return bTotal
+																		- aTotal;
+															}).slice(0,MAX_ALBUM_COUNT);
+
+													var nodes = treemap
+															.nodes(root)
+															.filter(
+																	function(d) {
+																		return !d.children;
+																	}), nodeParents = getParents(
+															treemap, svg, nodes), parentCell = defineParentCell(
+															treemap, svg,
+															nodeParents), cell = defineCell(
+															treemap, svg), cellText = defineCellText(
+															treemap, svg, cell);
+
+												};
+												var defineParentCell = function(
+														treemap, svg,
+														nodeParents) {
+													var pc = svg
+															.selectAll(
+																	'g.parentCell')
+															.data(nodeParents)
+															.enter()
+															.append("svg:g")
+															.attr("class",
+																	"parentCell")
+
+															.attr(
+																	'data-album',
+																	function(d) {
+																		return d.name
+																	});
+
+													return pc;
+												};
+												var defineCell = function(
+														treemap, svg) {
+													var cell = svg
+															.selectAll(
+																	'g.parentCell')
+															.selectAll('g.cell')
+															.data(
+																	function(d) {
+																		return d.children;
+																	})
+															.enter()
+															.append('svg:g')
+															.attr('class',
+																	'cell')
+															.attr(
+																	"transform",
+																	function(d) {
+																		return "translate("
+																				+ d.x
+																				+ ","
+																				+ d.y
+																				+ ")";
+																	})
+															.attr(
+																	"data-type",
+																	function(d) {
+																		return d.name;
+																	})
+															.attr(
+																	"data-value",
+																	function(d) {
+																		return d.value;
+																	})
+															.on(
+																	'mouseover',
+																	function(d) {
+																		d3
+																				.select(
+																						this.parentNode)
+																				.classed(
+																						'active',
+																						true)
+																	})
+															.on(
+																	'mouseout',
+																	function(d) {
+																		d3
+																				.select(
+																						this.parentNode)
+																				.classed(
+																						'active',
+																						false)
+																	});
+
+													cell
+															.append("svg:rect")
+															.attr(
+																	"width",
+																	function(d) {
+																		return d.dx;
+																	})
+															.attr(
+																	"height",
+																	function(d) {
+																		return d.dy;
+																	})
+															.attr("class",
+																	"cell")
+															.style(
+																	"fill-opacity",
+																	0.7)
+															.style(
+																	"fill",
+																	function(d) {
+																		console.log("the color palalte" + d.name);
+																		return d.children ? color(d.name)
+																				: color(d.parent.name);
+																	});
+
+													return cell;
+												};
+												var defineCellText = function(
+														treemap, svg, cell) {
+													var cellTextSvg = cell
+															.append("svg")
+															.attr(
+																	"width",
+																	function(d) {
+																		return d.dx < 1 ? 1
+																				: (d.dx - 1);
+																	})
+															.attr(
+																	"height",
+																	function(d) {
+																		return d.dy;
+																	});
+													var cellText = cellTextSvg
+															.append("text")
+															.attr(
+																	"x",
+																	function(d) {
+																		return 10;
+																	})
+															.attr(
+																	"y",
+																	function(d) {
+																		return 10;
+																	})
+															.attr("dy", ".35em")
+															.attr("text-align",
+																	"left")
+															.attr('class',
+																	'abbrevText')
+															.text(
+																	function(d) {
+																		return (d.children ? null
+																				: (d.dx*d.dy > MIN_RECT_SIZE_FOR_TEXT ? d.name : null));
+																	});
+																cellTextSvg.selectAll(".abbrevText text")
+																	.call(wrap, function(d) {
+																		return d.dx;
+																	});
+
+													return cellText;
+												};
+
+												/*   var div = d3.select("body").append("div")
+												       .style("position", "relative")
+												       .style("width", (width + margin.left + margin.right) + "px")
+												       .style("height", (height + margin.top + margin.bottom) + "px")
+												       .style("left", margin.left + "px")
+												       .style("top", margin.top + "px"); */
+
+												render(
+														treemapUser1,
+														svgUser1,
+														getSummaryDataForUser("User1"));
+												render(
+														treemapUser2,
+														svgUser2,
+														getSummaryDataForUser("User2"));
+												showChartForUser = function(
+														user) {
+
+													render(getSummaryDataForUser(user));
+												}
+
+												function position() {
+													this
+															.style(
+																	"left",
+																	function(d) {
+																		return d.x
+																				+ "px";
+																	})
+															.style(
+																	"top",
+																	function(d) {
+																		return d.y
+																				+ "px";
+																	})
+															.style(
+																	"width",
+																	function(d) {
+																		return Math
+																				.max(
+																						0,
+																						d.dx - 1)
+																				+ "px";
+																	})
+															.style(
+																	"height",
+																	function(d) {
+																		return Math
+																				.max(
+																						0,
+																						d.dy - 1)
+																				+ "px";
+																	});
+												}
+												// showChartForUser("User1");
+
+											}); //User2 data
+						}); //User1 data
+	</script>
+</body>
+
+</html>

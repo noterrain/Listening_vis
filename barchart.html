@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<meta charset='utf-8'>
+<meta
+	content='width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0'
+	name='viewport'>
+<title>Music Visualization</title>
+<link href='scripts/bootstrap-3.3.6-dist/css/bootstrap.min.css'
+	rel='stylesheet' type='text/css'>
+<link href='scripts/dc.js/dc.css' rel='stylesheet' type='text/css'>
+<link href='scripts/d3/lib/colorbrewer/colorbrewer.css' rel='stylesheet'
+	type='text/css'>
+<link href="scripts/jquery-ui-1.11.4.custom/jquery-ui.css"
+	rel="stylesheet" type="text/css">
+<link href="scripts/Guriddo_jqGrid_JS_5/css/ui.jqgrid.css"
+	rel="stylesheet" type="text/css">
+
+<script src='scripts/d3/d3.js' type='text/javascript'></script>
+<script src='scripts/crossfilter/crossfilter.js' type='text/javascript'></script>
+<script src='scripts/dc.js/dc.js' type='text/javascript'></script>
+<script src='scripts/jquery-2.2.3.js' type='text/javascript'></script>
+<script src='scripts/bootstrap-3.3.6-dist/js/bootstrap.min.js'
+	type='text/javascript'></script>
+
+<script src='scripts/d3/lib/colorbrewer/colorbrewer.js'
+	type='text/javascript'></script>
+<script src='scripts/jquery-ui-1.11.4.custom/jquery-ui.js'
+	type='text/javascript'></script>
+<script src='scripts/Guriddo_jqGrid_JS_5/js/i18n/grid.locale-en.js'
+	type='text/javascript'></script>
+<script src='scripts/Guriddo_jqGrid_JS_5/js/jquery.jqGrid.min.js'
+	type='text/javascript'></script>
+
+
+<style>
+
+body {
+  font: 10px sans-serif;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.x.axis path {
+    z-index: 99999;
+    display: inline;
+    stroke-width:3px;
+}
+svg {
+  opacity: 0.8;
+}
+
+.d3-tip {
+  line-height: 1;
+  padding: 12px;
+  background: #fff;
+  color: #333;
+  border-style: solid;
+  border-width: 1px; border-color: rgb(0,0,0,0.2);
+  font: 14px 'Inconsolata',Monaco,"Lucida Console",Consolas,"Courier New";
+}
+
+rect:hover {
+  fill: black;
+}
+
+.col-centered{
+  float:none;
+  margin: 0 auto;
+}
+
+.y.axis path{
+  display:none;
+}
+.tick line{
+  opacity: 0.1;
+  stroke-width:1px;
+}
+
+svg,.container{
+font: 12px 'Inconsolata',Monaco,"Lucida Console",Consolas,"Courier New";
+}
+/*
+.h3{
+      color: #181818;
+      font-family: 18px;
+      font-family: "Montserrat","Gotham SSm B";
+      font-style: normal;
+      font-weight: 500;
+}*/
+
+</style>
+<body>
+<nav class="navbar navbar-default">
+   <div class="container-fluid">
+     <!-- Brand and toggle get grouped for better mobile display -->
+
+     <!-- Collect the nav links, forms, and other content for toggling -->
+     <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1" style="font-size:14px;">
+       <ul class="nav navbar-nav">
+          <li><a href="/index.html">Listening behavior: Time <span class="sr-only">(current)</span></a></li>
+          <li><a href="/music_vis_line.html">Listening behavior: song attribute</a></li>
+          <li class="active"><a href="/barchart.html">Device & Traffic source</a></li>
+          <li><a href="/treemap.html">Listening preferenc</a></li>
+       </ul>
+     </div><!-- /.navbar-collapse -->
+   </div><!-- /.container-fluid -->
+  </nav>
+
+  <div class='container' id='main-container'>
+      <div class='content'>
+          <div class='container'>
+              <div class='row'>
+                 <div class="col-sm-8 col-md-8 col-lg-8 col-centered">
+                  <h2 style="margin-top:20px">Device</h2>
+                 </div>
+              </div>
+              <div class='row'>
+                 <div style="font-size:14px;" class="col-sm-8 col-md-8 col-lg-8 col-centered">
+                  <p>Time spent on mobile:</p>
+                 </div>
+              </div>
+              <div class="row">
+                <div style="font-size:14px;" class="col-sm-8 col-md-8 col-lg-8 col-centered">
+                <div style="margin-left:-14px" class="col-sm-4 col-md-4 col-lg-4 pull-left">
+                 <p style="font-size:28px;color:rgb(249, 130, 41);">58.3%<p>
+                 <p >User1 listen to 28% of their tunes on mobile.</p>
+                </div>
+                <div class="col-sm-4 col-md-4 col-lg-4 pull-right">
+                 <p style="font-size:28px;color:rgb(74, 194, 188);">9.89%<p>
+                 <p>User2 listen to 9.89% of their tunes on mobile.</p>
+                </div>
+              </div>
+              <hr style="margin-top:100px">
+
+
+              <div class='row'>
+                     <div class="col-sm-8 col-md-8 col-lg-8 col-centered">
+                      <h2 style="">Traffic source</h2>
+                     </div>
+                  </div>
+              <div class="row">
+                  <div class="col-sm-8 col-md-8 col-lg-8 col-centered">
+                   <p style="font-size:14px;">Where are the listening source coming from?</p>
+                  </div>
+              </div>
+                  <div style="margin-top:40px;" class='bar-graph col-sm-10 col-md-10 col-lg-10 col-centered' id='line-chart'></div>
+              </div>
+
+          </div>
+      </div>
+
+  </div>
+
+<script src="//d3js.org/d3.v3.min.js"></script>
+<script src="http://labratrevenge.com/d3-tip/javascripts/d3.tip.v0.6.3.js"></script>
+<script>
+
+var margin = {top: 20, right: 20, bottom: 120, left: 120},
+    width = 900 - margin.left - margin.right,
+    height = 420 - margin.top - margin.bottom;
+
+var x0 = d3.scale.ordinal()
+    .rangeRoundBands([0, width], 0.1);
+
+var x1 = d3.scale.ordinal();
+
+var y = d3.scale.linear()
+    .range([height, 0]);
+
+var color = d3.scale.ordinal()
+    .range(["#F98229", "#4AC2BC"]);
+
+var xAxis = d3.svg.axis()
+    .scale(x0)
+    .orient("bottom");
+
+var yAxis = d3.svg.axis()
+    .scale(y)
+    .orient("left")
+    .innerTickSize(-width)
+    .tickFormat(d3.format(".2s"));
+
+var tip = d3.tip()
+    .attr('class', 'd3-tip')
+    .offset([-10, 0])
+    .html(function(d) {
+      var valueFormat = d3.format(".2s");
+      return "<p>" + d.name +"</span>: " + Math.floor((d.y_pct)*100) + "% from  " + d.thesource + "</p><p>milliseconds played: " + valueFormat(d.value);
+    })
+
+var svg = d3.select("body .bar-graph").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+var sum = [];
+var sum1 = 0
+var sum2 = 0;
+
+svg.call(tip);
+
+d3.csv("data/data_source.csv", function(error, data) {
+  //in each of object is the the brand name and value pair
+  if (error) throw error;
+  //ageNames Twitter Facebook
+  var ageNames = d3.keys(data[0]).filter(function(key) { return key !== "source"; });
+
+  console.log("ageNames is " + ageNames);
+  data.forEach(function(d) {
+    //age is a array with multiple object
+    d.ages = ageNames.map(function(name) { return {name: name, value: +d[name]}; });
+     sum1= sum1 + d.ages[0].value;
+     sum2 = sum2 + d.ages[1].value;
+});
+
+sum.push(sum1);
+sum.push(sum2);
+
+console.log("sum"+sum[0] + " sum2" + sum[1]);
+
+data.forEach(function(d) {
+  //sd.total = sum;
+  d.pct = [];
+  console.log("d.ages hahahahahAAAA");
+
+  for (var i=0;i <d.ages.length;i ++ ){
+    var y_pct = d.ages[i].value/sum[i];
+
+  d.pct.push({
+      thesource: d.source,
+      name: d.ages[i].name,
+      value: d.ages[i].value,
+      //y_pct: d.ages[i].y_pct
+      y_pct: y_pct
+    });
+
+    console.log("d.pct" + d.pct[i].y_pct);
+  }
+});
+
+  //搞不懂为什么要弄个x0, x1
+  x0.domain(data.map(function(d) { return d.source;}));
+  x1.domain(ageNames).rangeRoundBands([0, x0.rangeBand()]);
+
+  y.domain([0, d3.max(data, function(d) { return d3.max(d.ages, function(d) { return d.value; }); })]);
+
+  console.log(data[0]);
+  console.log("hahahah" + height)
+  svg.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0,281)")
+      .call(xAxis)
+    .selectAll("text")
+      .attr("y", 0)
+      .attr("x", 9)
+      .attr("dy", ".35em")
+      .attr("transform", "rotate(90)")
+      .style("text-anchor", "start");
+
+  svg.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(0)")
+      .attr("y", -18)
+      .attr("x", 100)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("milliseconds played");
+
+  var brand = svg.selectAll(".source")
+      .data(data)
+    .enter().append("g")
+      .attr("class", "brand")
+      .attr("transform", function(d) { return "translate(" + x0(d.source) + ",0)"; });
+  //This code then uses the D3 pattern to bind the age group data to SVG rectangles for each of the age group segment found in each state.
+  brand.selectAll("rect")
+      .data(function(d) { return d.ages; })
+    .enter().append("rect")
+      .attr("class", "sourceBar")
+      .attr("width", x1.rangeBand())
+      .attr("x", function(d) { return x1(d.name); })
+      .attr("y", function(d) { return y(d.value); })
+      .attr("height", function(d) { return height - y(d.value); })
+      .style("fill", function(d) { return color(d.name); })
+      .on('mouseover', tip.show)
+      // .on("mouseover", function(d){
+      //   d3.select(this).attr("stroke","black").attr("stroke-width",1);
+      // })
+      .on('mouseout', tip.hide);
+      // .on('mouseover', function(d){
+      //   d3.select(this).attr("stroke","black").attr("stroke-width",0);
+      // });
+    //  .text(function(d){return Math.floor((d.y_pct)*100);});
+
+  brand.selectAll("rect")
+        	.data(function(d) {
+        		return d.pct;
+        	})
+//data.sort(function(a, b) { return b.total - a.total; });
+
+  var legend = svg.selectAll(".legend")
+      .data(ageNames.slice().reverse())
+    .enter().append("g")
+      .attr("class", "legend")
+      .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
+
+  legend.append("rect")
+      .attr("x", width - 18)
+      .attr("width", 18)
+      .attr("height", 18)
+      .style("fill", color);
+
+  legend.append("text")
+      .attr("x", width - 24)
+      .attr("y", 9)
+      .attr("dy", ".35em")
+      .style("text-anchor", "end")
+      .text(function(d) { return d; });
+
+});
+</script>

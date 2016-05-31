@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang='en'>
+
+<head>
+    <meta charset='utf-8'>
+    <meta content='width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0' name='viewport'>
+
+    <title>Music Visualization</title>
+    <link href='scripts/bootstrap-3.3.6-dist/css/bootstrap.css' rel='stylesheet' type='text/css'>
+    <link href='scripts/dc.js/dc.css' rel='stylesheet' type='text/css'>
+    <!-- <link href='scripts/d3/lib/colorbrewer/colorbrewer.css' rel='stylesheet' type='text/css'> -->
+    <link href="scripts/jquery-ui-1.11.4.custom/jquery-ui.css" rel="stylesheet" type="text/css">
+    <link href="scripts/Guriddo_jqGrid_JS_5/css/ui.jqgrid.css" rel="stylesheet" type="text/css">
+
+    <script src='scripts/d3/d3.js' type='text/javascript'></script>
+    <script src='scripts/crossfilter/crossfilter.js' type='text/javascript'></script>
+    <script src='scripts/dc.js/dc.js' type='text/javascript'></script>
+    <script src='scripts/jquery-2.2.3.js' type='text/javascript'></script>
+    <script src='scripts/bootstrap-3.3.6-dist/js/bootstrap.min.js' type='text/javascript'></script>
+
+    <!-- <script src='scripts/d3/lib/colorbrewer/colorbrewer.js' type='text/javascript'></script> -->
+    <script src='scripts/jquery-ui-1.11.4.custom/jquery-ui.js' type='text/javascript'></script>
+    <script src='scripts/Guriddo_jqGrid_JS_5/js/i18n/grid.locale-en.js' type='text/javascript'></script>
+    <script src='scripts/Guriddo_jqGrid_JS_5/js/jquery.jqGrid.min.js' type='text/javascript'></script>
+    <style type="text/css">
+        body {
+            font: 10px sans-serif;
+        }
+
+        .axis path,
+        .axis line {
+            fill: none;
+            stroke: #000;
+            shape-rendering: crispEdges;
+        }
+
+        .x.axis path {
+            display: inline;
+            stroke-width:3px;
+        }
+
+        .y.axis path{
+          display:none;
+        }
+
+
+       .line {
+            fill: none;
+        }
+
+        .user:nth-child(3) .line{
+          stroke: #F98229;
+          stroke-width: 3px;
+        }
+        .user:nth-child(4) .line{
+          stroke: #4AC2BC;
+          stroke-width: 3px;
+        }
+
+        svg,.container{
+        font: 12px 'Inconsolata',Monaco,"Lucida Console",Consolas,"Courier New";
+        }
+
+        .tick line{
+          opacity: 0.1;
+          stroke-width:1px;
+        }
+
+        .button1 {
+          margin-left: auto;
+          margin-right: auto;
+        }
+
+        #hourButton.active{
+          color: white;
+          background-color:black;
+        }
+        #weekButton.active{
+          color:white;
+          background-color:black;
+        }
+        .line-graph{
+          margin-left: auto;
+          margin-right: auto;
+        }
+        .col-centered{
+          float:none;
+          margin: 0 auto;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-default">
+     <div class="container-fluid">
+       <!-- Brand and toggle get grouped for better mobile display -->
+
+       <!-- Collect the nav links, forms, and other content for toggling -->
+       <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1" style="font-size:14px;">
+         <ul class="nav navbar-nav">
+           <li class="active"><a href="#">Listening behavior: Time <span class="sr-only">(current)</span></a></li>
+           <li><a href="/music_vis_line.html">Listening behavior: song attribute</a></li>
+           <li><a href="/barchart.html">Device & Traffic source</a></li>
+           <li><a href="/treemap.html">Listening preference</a></li>
+         </ul>
+       </div><!-- /.navbar-collapse -->
+     </div><!-- /.container-fluid -->
+    </nav>
+
+
+    <div class='container' id='main-container'>
+        <div class='content'>
+            <div class='container'>
+                <div class='row'>
+                   <div class="col-sm-8 col-md-8 col-lg-8 col-centered">
+                    <h3 style="margin-top:50px">Daily/Weekly Listening Behavior #1: Time</h3>
+                   </div>
+                </div>
+                <div class='row'>
+                   <div style="font-size:14px;" class="col-sm-8 col-md-8 col-lg-8 col-centered">
+                     <p>User1 spend the most time listening at 4pm, while user2's ear is busiest at 8pm. </p>
+                     <p>Both of them are not listening actively on Saturday.<p>
+                   </div>
+                </div>
+                <div style="margin-top:40px;" class='row'>
+                    <div class="button1 input-group col-sm-1 col-md-1 col-lg-1">
+                        <div class="input-group-btn">
+                            <button id="hourButton" style = "border-color: grey;" type="button" class="btn active btn-default">by hours</button>
+                            <button id="weekButton" style = "border-color: grey;" type="button" class="btn btn-default">by days</button>
+                        </div>
+                    </div>
+                </div>
+                <div class='row'>
+                    <div class='line-graph col-sm-10 col-md-10 col-lg-10 col-centered' id='line-chart'></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        var margin = {
+                top: 20,
+                right: 80,
+                bottom: 30,
+                left: 100
+            },
+            width = $("#line-chart").width() - margin.left - margin.right,
+            height = width /
+            2 - margin.top - margin.bottom;
+
+        var isLeapYear = function(d) {
+            var year = d.getFullYear();
+            if((year & 3) != 0) return false;
+            return ((year % 100) != 0 || (year % 400) == 0);
+        };
+
+        // Get Day of Year
+        var getDOY = function(d) {
+            var dayCount = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+            var mn = d.getMonth();
+            var dn = d.getDate();
+            var dayOfYear = dayCount[mn] + dn;
+            if(mn > 1 && isLeapYear(d)) dayOfYear++;
+            return dayOfYear;
+        };
+        function getWeekOfYear(d) {
+        	var wd=new Date(d);
+        	wd.setHours(0,0,0);
+            wd.setDate(wd.getDate()+4-(wd.getDay()||7));
+            if(d.getDay() == wd.getDay()) return +Math.ceil((((d-new Date(d.getFullYear(),0,1))/8.64e7)+1)/7);
+            else return 0;
+        }
+
+        var weekFormat = d3.time.format("%w");
+	    	var weekStringFormat = d3.time.format("%a");
+
+        function fixData(user, d) {
+            var ot = d.timestamp;
+            d.user = user;
+            d.timestamp = parseDate(d.timestamp);
+            if(!d.timestamp) {
+                console.error("Invalid timestamp data " + ot);
+                return;
+            }
+            if(isNaN(d.milliseconds_played)) {
+                console.log("Invalid time played " + d.milliseconds_played);
+                return;
+            }
+            d.hour = d.timestamp.getHours();
+            d.weekDay = weekFormat(d.timestamp);
+            //adjust to make Monday start of the week
+            if(d.weekDay == 0) d.weekDay = 6;
+            else d.weekDay -= 1;
+            d.dayOfYear = getDOY(d.timestamp);
+            d.weekOfYear = getWeekOfYear(d.timestamp);
+        }
+        var parseDate = d3.time.format("%Y/%m/%d %H:%M:%S").parse;
+
+        var x = d3.time.scale().range([0, width]);
+
+        var y = d3.scale.linear().range([height, 0]);
+
+      //  var color = d3.scale.category10();
+        var hourTickValues = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+             	             12, 13, 14, 15, 16, 17, 18, 19, 20,
+            	             21, 22, 23, 24];
+        function hourTickFormat(v) {
+        	var s="";
+        	if(v == 0) s = "12AM";
+        	else if(v == 12) s = "Noon";
+        	else if(v > 12) s = (v-12) + "";
+        	else s=v;
+        	return s;
+        }
+        var metrics = {
+        			"hour": [
+                       {name: "totalMilliseconds", ylabel: "Total Listening Time"},
+                       {name: "averageMilliseconds", ylabel: "Average Listening Time"},
+                       {name: "averageValenceScore", ylabel: "Average Valence Score"},
+                       {name: "averageDanceability", ylabel: "Average Danceability"},
+                       {name: "averageFamiliarityScore", ylabel: "Average Familiarity"},
+                       {name: "averageSongTempo", ylabel: "Average Song Tempo"},
+                       {name: "averageRunnability", ylabel: "Average Runnability"},
+                       {name: "averageEnergy", ylabel: "Average Energy"},
+                       {name: "averagePopularity", ylabel: "Average Popularity"}
+                       ],
+                    "week":[
+        				{name: "totalMilliseconds", ylabel: "Total Listening Time"},
+                        {name: "averageMilliseconds", ylabel: "Average Listening Time"},
+                        {name: "averageValenceScore", ylabel: "Average Valence Score"},
+                        {name: "averageDanceability", ylabel: "Average Danceability"},
+                        {name: "averageFamiliarityScore", ylabel: "Average Familiarity"},
+                        {name: "averageSongTempo", ylabel: "Average Song Tempo"},
+                        {name: "averageRunnability", ylabel: "Average Runnability"},
+                        {name: "averageEnergy", ylabel: "Average Energy"},
+                        {name: "averagePopularity", ylabel: "Average Popularity"}
+        				]
+        			};
+        var xDomainMap = {
+        		"hour": [0, 23],
+        		"week" : [0, 6]
+        };
+        var yDomain =  [0, 1];
+
+        var weekTickValues = [ 0, 1, 2, 3, 4, 5, 6];
+	    	var weekTickStringValues = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+        function weekTickFormat(v) {
+        	var s = weekTickStringValues[+v];
+        	return s;
+        }
+        var showChartForMetric = null;
+        $("#hourButton").on("click", function(evt) {
+        	$("#hourButton").addClass("active");
+        	$("#weekButton").removeClass("active");
+        	showChartForMetric("totalMilliseconds", "hour");
+        });
+		$("#weekButton").on("click", function(evt) {
+        	$("#weekButton").addClass("active");
+        	$("#hourButton").removeClass("active");
+        	showChartForMetric("totalMilliseconds", "week");
+
+        });
+        var xAxis = d3.svg.axis().scale(x).orient("bottom")
+        	.tickValues(hourTickValues
+       		)
+           .tickFormat(hourTickFormat);
+
+
+        //var formatAsPercentage = d3.format("%H");
+        var formatAsPercentage = function timeConversion(millisec) {
+        var seconds = (millisec / 1000).toFixed(1);
+        var minutes = (millisec / (1000 * 60)).toFixed(1);
+        var hours = (millisec / (1000 * 60 * 60)).toFixed(1);
+        var days = (millisec / (1000 * 60 * 60 * 24)).toFixed(1);
+        if (seconds < 60) {
+            return seconds + " Sec";
+        } else if (minutes < 60) {
+            return minutes + " Min";
+        } else if (hours < 24) {
+            return hours + " Hrs";
+        } else {
+            return days + " Days"
+        }
+        }
+
+
+
+        var yAxis = d3.svg.axis().scale(y).orient("left").innerTickSize(-width).tickFormat(formatAsPercentage);
+
+        var line = d3.svg.line().interpolate("basis").x(function(d) {
+            return x(+d.key);
+        }).y(function(d) {
+            return y(+d.value.totalMilliseconds);
+        });
+
+  //
+  //  function formatMilliseconds(ms) {
+	// 		var hours = Math.floor(ms/3600000);
+	// 		var min = 0;
+	// 		 min = Math.floor( (ms -hours * 3600000) / 60000 );
+	// 		var sec = (ms - hours * 3600000 - min * 60000) / 1000;
+	// 		if(hours>0) return hours+"h "+min+"m "+sec+"s";
+	// 		else if(min>0) return min+"m "+sec+"s";
+	// 		else return sec+"s";
+	// 	}
+
+		var vis = d3.select("#line-chart").append("svg").attr("width",
+	            width + margin.left + margin.right).attr("height",
+	                    height + margin.top + margin.bottom);
+        var svg = vis.append("g").attr(
+            "transform",
+            "translate(" + margin.left + "," + margin.top + ")");
+		var crossfilterGroupsMap={};
+
+       d3.csv("data/User1.csv", function(error, user1Data) {
+            if(error)
+                throw error;
+            d3.csv("data/User2.csv", function(error, user2Data) {
+                if(error)
+                    throw error;
+                var data = []; //consolidated user data
+                //just join the user data for now
+                //TODO will need to account for songs that cross hour boundaries
+
+                user1Data.forEach(fixData.bind(undefined, "User1"));
+                user2Data.forEach(fixData.bind(undefined, "User2"));
+				data = user1Data.concat(user2Data);
+
+                var facts = crossfilter(data); // Gets our 'facts' into crossfilter
+				var hourMap = d3.map(data, function(d) {
+					return d.hour;
+				});
+                var weekDayMap = d3.map(data, function(d) {
+                	return d.weekDay;
+                });
+                var dayExtent = d3.extent(data, function(d) {
+                	return d.dayOfYear;
+                });
+                var weekExtent = d3.extent(data, function(d) {
+                	return d.weekOfYear;
+                });
+                var all = facts.groupAll();
+				var userDimension = facts.dimension(function(d) {
+					return d.user;
+				});
+
+
+                function getSummaryDataForUser(filteredData, xdim) {
+                	var filteredFacts = crossfilter(filteredData);
+                	var hourDimension = filteredFacts.dimension(function(d) {
+                        return d.hour;
+                    });
+                    var weekDayDimension = filteredFacts.dimension(function(d) {
+                        return d.weekDay;
+                    });
+
+
+                    var hourGroup = hourDimension.group().reduce(
+                        function(p, v) {
+                            ++p.number;
+                            p.totalMilliseconds += +v.milliseconds_played;
+                            p.totalValenceScore += (v.milliseconds_played * ((!v.valence_score || v.valence_score == "null") ? 0 : +v.valence_score));
+                            p.totalDanceabilityScore += (v.milliseconds_played * ((!v.danceability_score || v.danceability_score == "null") ? 0 : +v.danceability_score));
+                            p.totalFamiliarityScore += (v.milliseconds_played * ((!v.familiarity_score || v.familiarity_score == "null") ? 0 : +v.familiarity_score));
+                            p.totalSongTempo += (v.milliseconds_played * ((!v.song_tempo || v.song_tempo == "null") ? 0 : +v.song_tempo));
+                            p.totalRunnability += (v.milliseconds_played * ((!v.runnability || v.runnability == "null") ? 0 : +v.runnability));
+                            p.totalEnergy += (v.milliseconds_played * ((!v.energy || v.energy == "null") ? 0 : +v.energy));
+                            p.totalPopularityNormalized += (v.milliseconds_played * ((!v.popularity_normalized || v.popularity_normalized == "null") ? 0 : +v.popularity_normalized));
+                            return p;
+                        },
+                        function(p, v) {
+                            --p.number;
+                            p.totalMilliseconds -= +v.milliseconds_played;
+                            p.totalValenceScore -= (v.milliseconds_played * ((!v.valence_score || v.valence_score == "null") ? 0 : +v.valence_score));
+                            p.totalDanceabilityScore -= (v.milliseconds_played * ((!v.danceability_score || v.danceability_score == "null") ? 0 : +v.danceability_score));
+                            p.totalFamiliarityScore -= (v.milliseconds_played * ((!v.familiarity_score || v.familiarity_score == "null") ? 0 : +v.familiarity_score));
+                            p.totalSongTempo -= (v.milliseconds_played * ((!v.song_tempo || v.song_tempo == "null") ? 0 : +v.song_tempo));
+                            p.totalRunnability -= (v.milliseconds_played * ((!v.runnability || v.runnability == "null") ? 0 : +v.runnability));
+                            p.totalEnergy -= (v.milliseconds_played * ((!v.energy || v.energy == "null") ? 0 : +v.energy));
+                            p.totalPopularityNormalized -= (v.milliseconds_played * ((!v.popularity_normalized || v.popularity_normalized == "null") ? 0 : +v.popularity_normalized));
+                            return p;
+                        },
+                        function() {
+                            return {
+                                number: 0,
+                                totalMilliseconds: 0,
+                                totalValenceScore: 0,
+                                totalDanceabilityScore: 0,
+                                totalFamiliarityScore: 0,
+                                totalSongTempo: 0,
+                                totalRunnability: 0,
+                                totalEnergy: 0,
+                                totalPopularityNormalized: 0
+                            }
+                        });
+                    crossfilterGroupsMap["hour"] = hourGroup;
+
+                    var weekDayGroup = weekDayDimension.group().reduce(
+                            function(p, v) {
+                                ++p.number;
+                                p.user = v.user;
+                                p.totalMilliseconds += +v.milliseconds_played;
+                                p.totalValenceScore += (v.milliseconds_played * ((!v.valence_score || v.valence_score == "null") ? 0 : +v.valence_score));
+                                p.totalDanceabilityScore += (v.milliseconds_played * ((!v.danceability_score || v.danceability_score == "null") ? 0 : +v.danceability_score));
+                                p.totalFamiliarityScore += (v.milliseconds_played * ((!v.familiarity_score || v.familiarity_score == "null") ? 0 : +v.familiarity_score));
+                                p.totalSongTempo += (v.milliseconds_played * ((!v.song_tempo || v.song_tempo == "null") ? 0 : +v.song_tempo));
+                                p.totalRunnability += (v.milliseconds_played * ((!v.runnability || v.runnability == "null") ? 0 : +v.runnability));
+                                p.totalEnergy += (v.milliseconds_played * ((!v.energy || v.energy == "null") ? 0 : +v.energy));
+                                p.totalPopularityNormalized += (v.milliseconds_played * ((!v.popularity_normalized || v.popularity_normalized == "null") ? 0 : +v.popularity_normalized));
+                                return p;
+                            },
+                            function(p, v) {
+                                --p.number;
+                                p.user = v.user;
+                                p.totalMilliseconds -= +v.milliseconds_played;
+                                p.totalValenceScore -= (v.milliseconds_played * ((!v.valence_score || v.valence_score == "null") ? 0 : +v.valence_score));
+                                p.totalDanceabilityScore -= (v.milliseconds_played * ((!v.danceability_score || v.danceability_score == "null") ? 0 : +v.danceability_score));
+                                p.totalFamiliarityScore -= (v.milliseconds_played * ((!v.familiarity_score || v.familiarity_score == "null") ? 0 : +v.familiarity_score));
+                                p.totalSongTempo -= (v.milliseconds_played * ((!v.song_tempo || v.song_tempo == "null") ? 0 : +v.song_tempo));
+                                p.totalRunnability -= (v.milliseconds_played * ((!v.runnability || v.runnability == "null") ? 0 : +v.runnability));
+                                p.totalEnergy -= (v.milliseconds_played * ((!v.energy || v.energy == "null") ? 0 : +v.energy));
+                                p.totalPopularityNormalized -= (v.milliseconds_played * ((!v.popularity_normalized || v.popularity_normalized == "null") ? 0 : +v.popularity_normalized));
+                                return p;
+                            },
+                            function() {
+                                return {
+                                    number: 0,
+                                    totalMilliseconds: 0,
+                                    totalValenceScore: 0,
+                                    totalDanceabilityScore: 0,
+                                    totalFamiliarityScore: 0,
+                                    totalSongTempo: 0,
+                                    totalRunnability: 0,
+                                    totalEnergy: 0,
+                                    totalPopularityNormalized: 0
+                                }
+                            });
+                    crossfilterGroupsMap["week"] = weekDayGroup;
+                    userDimension.filter(null);
+                    return crossfilterGroupsMap[xdim].top(Infinity).sort(sortByHourAscending);
+                }
+
+
+                function sortByHourAscending(a, b) {
+                    // Dates will be cast to numbers automagically:
+                    return +a.key - (b.key);
+                }
+
+
+
+
+                var xAxisSvg = svg.append("g").attr("class", "x axis").attr("transform",
+                    "translate(0," + height + ")").call(xAxis);
+
+                var yAxisSvg = svg.append("g").attr("class", "y axis").call(yAxis);
+                var yAxisText = yAxisSvg.append("text")
+                    .attr("transform", "rotate(0)").attr("x", 160).attr("y", -12).attr("dy",
+                        ".71em").style("text-anchor", "end").text(
+                        "Total Listening Time (July-Nov)");
+                // var yAxisText = yAxisSvg.append("text")
+                //         .attr("transform", "rotate(0)")
+                //         .attr("y", -18)
+                //         .attr("x", 100)
+                //         .attr("dy", ".71em")
+                //         .style("text-anchor", "end")
+                //         .text("Total Listening Time");
+
+				var users = [];
+
+                var user = svg.selectAll(".user").data(users);
+                user.enter().append("g")
+                    .attr("class", "user");
+                var userLines =
+                user.append("path").attr("class", "line");
+                	userLines.attr("d", function(d) {
+                    return line(d.values);
+                });
+
+				user.exit().remove();
+
+				var firstTime = true;
+                //this function is assigned to variable in global scope
+                 showChartForMetric = function(metric, xdim) {
+                	userDimension.filter("User1");
+                    var u1Data = getSummaryDataForUser(userDimension.top(Infinity), xdim);
+                    var factor=1;
+                    if(xdim == "hour") {
+                    	factor = dayExtent[1]-dayExtent[0];
+                    } else {
+                    	factor = weekExtent[1]-weekExtent[0];
+                    }
+                    var totalMetric=metric;
+                    if(metric.match(/^average/)) {
+                    	totalMetric = "total"+metric.substring(7);
+                    } else {
+                    	factor = 1;
+                    }
+                    userDimension.filter("User2");
+                    var u2Data = getSummaryDataForUser(userDimension.top(Infinity), xdim);
+                    console.log(u2Data);
+                    users = [{
+                        name: "User1",
+                        values: u1Data
+                    }, {
+                        name: "User2",
+                        values: u2Data
+                    }];
+
+                	userDimension.filter(null);
+
+                    var group = crossfilterGroupsMap[xdim];
+                    var fullData=group.top(Infinity);
+
+                    var metricMin = d3.min(fullData, function(d) {
+                        return d.value[metric];
+                    });
+                    var metricMax = d3.max(fullData, function(d) {
+                        return d.value[metric];
+                    });
+                    y.domain([0, metricMax]);
+                    x.domain(xDomainMap[xdim]);
+
+                    if(totalMetric != metric) {
+                    	var metricMin = d3.min(fullData, function(d) {
+                            return d.value[metric]/(d.value.totalMilliseconds*factor);
+                        });
+                        var metricMax = d3.max(fullData, function(d) {
+                            return d.value[metric]/(d.value.totalMilliseconds*factor);
+                        });
+                        y.domain([0, metricMax]);
+                        x.domain(xDomainMap[xdim]);
+                		line = d3.svg.line().interpolate("basis").x(function(d) {
+                        	return x(+d.key);
+                    	}).y(function(d) {
+                        	return y((+d.value[metric]/(d.value.totalMilliseconds*factor)));
+                    	});
+                    } else {
+                    	var metricMin = d3.min(fullData, function(d) {
+                            return d.value[metric];
+                        });
+                        var metricMax = d3.max(fullData, function(d) {
+                            return d.value[metric];
+                        });
+                        y.domain([0, metricMax]);
+                        x.domain(xDomainMap[xdim]);
+                		line = d3.svg.line().interpolate("basis").x(function(d) {
+                        	return x(+d.key);
+                    	}).y(function(d) {
+                        	return y(+d.value[metric]);
+                    	});
+                    }
+
+                	var t0 = svg.transition().duration(750);
+                    user = svg.selectAll(".user").data([]);
+                    user.exit().remove();
+                   user = svg.selectAll(".user").data(users);
+		                    user.enter().append("g")
+		                    .attr("class", "user");
+		                user.append("path").attr("class", "line").attr("d", function(d) {
+		                    return line(d.values);
+		                });
+
+
+                    user.append("text").datum(function(d) {
+                        return {
+                            name: d.name,
+                            value: d.values[d.values.length - 1]
+                        };
+                    }).attr(
+                        "transform",
+                        function(d) {
+                            return "translate(" + x(+d.value.key) + "," +
+                                y(+d.value.value[metric]) + ")";
+                        }).attr("x", 3).attr("dy", ".35em").text(function(d) {
+                        return d.name;
+                    });
+                    if(xdim == "hour") {
+                    	xAxis.tickValues(hourTickValues).tickFormat(hourTickFormat);
+                    } else {
+                    	xAxis.tickValues(weekTickValues).tickFormat(weekTickFormat)
+                    }
+                    if(firstTime) {
+                    	xAxisSvg.call(xAxis);
+                    	yAxisSvg.call(yAxis);
+                    	firstTime = false;
+                    } else {
+
+	                    xAxisSvg
+	                    .transition().duration(500).ease("sin-in-out")  // https://github.com/mbostock/d3/wiki/Transitions#wiki-d3_ease
+	                    .call(xAxis);
+	                    yAxisSvg
+	                    .transition().duration(500).ease("sin-in-out")  // https://github.com/mbostock/d3/wiki/Transitions#wiki-d3_ease
+	                    .call(yAxis);
+	                    var m=metrics[xdim];
+	                    var ylabel="Total Listening Time";
+
+	                    m.forEach(function(d) {
+	                    	if(d.name == metric) ylabel=d.ylabel;
+	                    });
+	                    //yAxisText.text(ylabel);
+                    }
+
+                }
+
+                 showChartForMetric("totalMilliseconds", "hour");
+
+            }); //User2 data
+        }); //User1 data
+    </script>
+</body>
+
+</html>
