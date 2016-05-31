@@ -58,16 +58,16 @@ rect {
 }
 
 div.tooltip {
-	display: block;
+	display: inline-block;
 	position: absolute;
-	padding: 10px;
+	padding: 18px;
 	background: white;
-	border-radius: 3px;
 	pointer-events: none;
-	width: 200px;
-	box-shadow: 0px 0px 5px #888;
-	text-align: center;
+	width: 300px;
 	opacity: 1.0;
+	font: 12px 'Inconsolata',Monaco,"Lucida Console",Consolas,"Courier New";
+	border-style: solid;
+  border-width: 1px; border-color: rgb(0,0,0,0.2);
 }
 
 div.tooltip p {
@@ -84,6 +84,14 @@ div.tooltip h3 {
 .col-centered{
 	float:none;
 	margin: 0 auto;
+}
+
+svg,.container{
+font: 10px 'Inconsolata',Monaco,"Lucida Console",Consolas,"Courier New";
+}
+
+.line-graph p {
+	font: 16px 'Inconsolata',Monaco,"Lucida Console",Consolas,"Courier New";
 }
 </style>
 </head>
@@ -119,12 +127,12 @@ div.tooltip h3 {
 				</div>
 
 				<div class="row">
-					<div class='line-graph col-sm-8 col-md-8 col-lg-8 col-centered'
+					<div class='line-graph col-sm-11 col-md-11 col-lg-11 col-centered'
 						id='treemap_user1'><p>User1</p></div>
         </div>
 
 				<div class="row">
-					<div style="margin-top:40px;" class='line-graph col-sm-8 col-md-8 col-lg-8 col-centered'
+					<div style="margin-top:40px;" class='line-graph col-sm-11 col-md-11 col-lg-11 col-centered'
 						id='treemap_user2'><p>User2</p></div>
 
 				</div>
@@ -141,6 +149,7 @@ div.tooltip h3 {
 
 		//area of the rectangle, text is displayed only if area is higher than this value
 		var MIN_RECT_SIZE_FOR_TEXT=800;
+
 		var margin = {
 			top : 20,
 			right : 80,
@@ -209,8 +218,7 @@ div.tooltip h3 {
 			wd.setHours(0, 0, 0);
 			wd.setDate(wd.getDate() + 4 - (wd.getDay() || 7));
 			if (d.getDay() == wd.getDay())
-				return +Math
-						.ceil((((d - new Date(d.getFullYear(), 0, 1)) / 8.64e7) + 1) / 7);
+				return +Math.ceil((((d - new Date(d.getFullYear(), 0, 1)) / 8.64e7) + 1) / 7);
 			else
 				return 0;
 		}
@@ -341,32 +349,26 @@ div.tooltip h3 {
 				/ 2 - margin.top - margin.bottom;
 
 	//	var color = d3.scale.category20c();
-		var color = d3.scale.ordinal().range(["#8c510a","#d8b365","#f6e8c3","#c7eae5","#5ab4ac","#01665e"]);
+		var color = d3.scale.ordinal().range(["#F1D9A7","#FF715B","#F3D34A","#F3E37C","#F5FDC6","#ED8555"]);
+		var color2 = d3.scale.ordinal().range(["#1976D2","#C4FFF9","#2196F3","#00BD9D","#8BD7D2","#07BEB8"]);
 		//var color = [#d8b365,#f5f5f5,#5ab4ac];
 
-		var treemapUser1 = d3.layout.treemap().size([ width, height ]).sticky(
-				false).value(function(d) {
-			return d.size;
+		var treemapUser1 = d3.layout.treemap().size([ width, height ]).sticky(false).value(function(d) {return d.size;
 		}).sort(function(a, b) {
-
-			return a.value - b.value;
-		});
-		var treemapUser2 = d3.layout.treemap().size([ width, height ]).sticky(
-				false).value(function(d) {
-			return d.size;
-		}).sort(function(a, b) {
-
 			return a.value - b.value;
 		});
 
-		d3
-				.csv(
-						"data/treemap_user1.csv",
+		var treemapUser2 = d3.layout.treemap().size([ width, height ]).sticky(false).value(function(d) {
+			return d.size;
+		}).sort(function(a, b) {
+			return a.value - b.value;
+		});
+
+		d3.csv("data/treemap_user1.csv",
 						function(error, user1Data) {
 							if (error)
 								throw error;
-							d3
-									.csv(
+							d3.csv(
 											"data/treemap_user2.csv",
 											function(error, user2Data) {
 												if (error)
@@ -375,10 +377,8 @@ div.tooltip h3 {
 												//just join the user data for now
 												//TODO will need to account for songs that cross hour boundaries
 
-												user1Data.forEach(fixData.bind(
-														undefined, "User1"));
-												user2Data.forEach(fixData.bind(
-														undefined, "User2"));
+												user1Data.forEach(fixData.bind(undefined, "User1"));
+												user2Data.forEach(fixData.bind(undefined, "User2"));
 												data = user1Data
 														.concat(user2Data);
 
@@ -389,41 +389,33 @@ div.tooltip h3 {
 															return d.user;
 														});
 												var albumKeys = d3
-														.map(
-																data,
-																function(d) {
+														.map(data,function(d) {
 																	return d.album_name;
 																}).keys();
 
 												function sortByTotalDescending(
 														a, b) {
 													// Dates will be cast to numbers automagically:
-													return +b.totalMilliseconds
-															- (a.totalMilliseconds);
+													return +b.totalMilliseconds- (a.totalMilliseconds);
 												}
 
-												function getSummaryDataForUser(
-														user) {
+												function getSummaryDataForUser(user) {
 													var filteredData = userDimension
-															.filter(user).top(
-																	Infinity);
+															.filter(user).top(Infinity);
 													var filteredFacts = crossfilter(filteredData);
 													var trackDimension = filteredFacts
-															.dimension(function(
-																	d) {
+															.dimension(function(d) {
 																return d.track_name;
 															});
 													var albumDimension = filteredFacts
-															.dimension(function(
-																	d) {
+															.dimension(function(d) {
 																return d.album_name;
 															});
 													// var artistDimension = filteredFacts.dimension(function(d) {
 													//     return d.artist_name;
 													// });
 													var albumTrackDimension = filteredFacts
-															.dimension(function(
-																	d) {
+															.dimension(function(d) {
 																return d.album_track;
 															});
 													//var artistTrackDimension = filteredFacts.dimension(function(d) {
@@ -451,8 +443,7 @@ div.tooltip h3 {
 																: +v.popularity_normalized));
 														return p;
 													}
-													function removeFromGroup(p,
-															v) {
+													function removeFromGroup(p,v) {
 														--p.number;
 														p.artist_name = v.artist_name;
 														p.popularity_normalized = v.popularity_normalized;
@@ -504,8 +495,7 @@ div.tooltip h3 {
 															.sort(
 																	sortByTotalDescending);
 
-													uData
-															.forEach(function(d) {
+													uData.forEach(function(d) {
 																var at = d.key
 																		.split(/\|\|/);
 																var a = at[0];
@@ -570,16 +560,10 @@ div.tooltip h3 {
 													var albumName = albumData.name;
 													var songData = target[0].__data__;
 													var tipHtml = [
-
-															'<h5 class="text-gray"><em>Song: ',
-															songData.name,
-															'</em></h5>',
-															(songData.artist_name ? ('<h5 class="text-gray"><em>Artist: '+
-																	songData.artist_name+
-															'</em></h5>'):""),
-															'<h5 class="text-gray"><em>',
-															formatMilliseconds(songData.size),
-															'</em></h5>'
+															'<h5 class="text-gray">Song: ',
+															songData.name,'</h5>',(songData.artist_name ? ('<h5 class="text-gray">Artist: '+
+																	songData.artist_name+'</h5>'):""),
+															'<h5 class="text-gray"> listening time:',formatMilliseconds(songData.size),'</h5>'
 															]
 															.join('');
 													tooltip.html(tipHtml);
@@ -604,8 +588,7 @@ div.tooltip h3 {
 																'mouseleave',
 																tooltip.hide);
 												var svgUser2 = d3
-														.select(
-																"#treemap_user2")
+														.select("#treemap_user2")
 														.append("svg:svg")
 														.attr("width", width)
 														.attr("height", height)
@@ -613,8 +596,7 @@ div.tooltip h3 {
 														.attr("transform",
 																"translate(.5,.5)");
 
-												$(svgUser2[0]).on('mousemove',
-														updateTip)
+												$(svgUser2[0]).on('mousemove',updateTip)
 														.on('mouseenter',
 																updateTip).on(
 																'mouseleave',
@@ -622,8 +604,7 @@ div.tooltip h3 {
 												var firstTime = true;
 												var nodes, node;
 
-												var getParents = function(
-														treemap, svg, nodes) {
+												var getParents = function(treemap, svg, nodes) {
 													var parentNames = {}, nodeParents = [];
 													for (var i = 0, len = nodes.length; i < len; i++) {
 														if (!parentNames[nodes[i].parent.name]) {
@@ -634,8 +615,7 @@ div.tooltip h3 {
 													}
 													return nodeParents;
 												};
-												var render = function(treemap,
-														svg, data) {
+												var render = function(treemap,svg, data) {
 													node = data, root = data;
 													data.children = data.children
 															.sort(function(a, b) {
@@ -646,133 +626,111 @@ div.tooltip h3 {
 																for (var i = 0; i < b.children.length; i++) {
 																	bTotal += b.children[i].size;
 																}
-																return bTotal
-																		- aTotal;
+																return bTotal	- aTotal;
 															}).slice(0,MAX_ALBUM_COUNT);
 
-													var nodes = treemap
-															.nodes(root)
-															.filter(
-																	function(d) {
+													var nodes = treemap.nodes(root)
+															.filter(function(d) {
 																		return !d.children;
 																	}), nodeParents = getParents(
 															treemap, svg, nodes), parentCell = defineParentCell(
-															treemap, svg,
-															nodeParents), cell = defineCell(
+															treemap, svg,nodeParents), cell = defineCell(
 															treemap, svg), cellText = defineCellText(
 															treemap, svg, cell);
 
 												};
-												var defineParentCell = function(
-														treemap, svg,
-														nodeParents) {
+												var defineParentCell = function(treemap, svg,nodeParents) {
 													var pc = svg
-															.selectAll(
-																	'g.parentCell')
+															.selectAll('g.parentCell')
 															.data(nodeParents)
 															.enter()
 															.append("svg:g")
-															.attr("class",
-																	"parentCell")
+															.attr("class","parentCell")
 
-															.attr(
-																	'data-album',
-																	function(d) {
-																		return d.name
-																	});
+															.attr('data-album',function(d) {return d.name});
 
 													return pc;
 												};
-												var defineCell = function(
-														treemap, svg) {
+												var tempData1 = ["The Jungle Book",
+																					"Warpaint",
+																					"Woody At 100: The Woody Guthrie Centennial Collection",
+																					"The Very Best Of Grateful Dead",
+																					"Really Rosie",
+																					"Ritual Union",
+																					"Greatest Hits",
+																					"936",
+																					"No Regerts",
+																					"Marimbach - Bach Arranged for Marimba Solo",
+																					"Bridge Over Troubled Water",
+																					"Tomorrow's Children",
+																					"Shaking The Habitual",
+																					"The Asch Recordings, Vol. 1-4"];
+
+												var tempData2 = ["Mozart: The Piano Concertos",
+																				"Domenico Scarlatti: Piano Sonatas",
+																				"Kintsugi",
+																				"Beethoven: Violin Concerto, Bernstein Serenade",
+																				"Bach, J.S.: The Art of Fugue - Emerson String Quartet",
+																				"J. S. Bach: Harpsichord Concertos",
+																				"Mozart: Prussian Quartets",
+																				"Tchaikovsky and Mendelssohn: Violin Concertos",
+																				"Haydn: 6 Sonatas for Violin & Viola",
+																				"The Vienna Album",
+																				"Brittany Haas",
+																				"Around The Well",
+																				"Beethoven: Symphony No. 7, et al.",
+																				"Virtuoso"];
+
+												var defineCell = function(treemap, svg) {
 													var cell = svg
-															.selectAll(
-																	'g.parentCell')
+															.selectAll('g.parentCell')
 															.selectAll('g.cell')
-															.data(
-																	function(d) {
-																		return d.children;
-																	})
+															.data(function(d) {return d.children;})
 															.enter()
 															.append('svg:g')
-															.attr('class',
-																	'cell')
-															.attr(
-																	"transform",
-																	function(d) {
-																		return "translate("
-																				+ d.x
-																				+ ","
-																				+ d.y
-																				+ ")";
+															.attr('class','cell')
+															.attr("transform",function(d) {return "translate("+ d.x + "," + d.y + ")";})
+															.attr("data-type",function(d) {return d.name;})
+															.attr("data-value",function(d) {return d.value;})
+															.on('mouseover',function(d) {
+																		d3.select(this.parentNode)
+																			.classed('active',true)
 																	})
-															.attr(
-																	"data-type",
-																	function(d) {
-																		return d.name;
-																	})
-															.attr(
-																	"data-value",
-																	function(d) {
-																		return d.value;
-																	})
-															.on(
-																	'mouseover',
-																	function(d) {
-																		d3
-																				.select(
-																						this.parentNode)
-																				.classed(
-																						'active',
-																						true)
-																	})
-															.on(
-																	'mouseout',
-																	function(d) {
-																		d3
-																				.select(
-																						this.parentNode)
-																				.classed(
-																						'active',
-																						false)
+															.on('mouseout',function(d) {
+																		d3.select(this.parentNode)
+																			.classed('active',false)
 																	});
 
 													cell
 															.append("svg:rect")
-															.attr(
-																	"width",
-																	function(d) {
-																		return d.dx;
-																	})
-															.attr(
-																	"height",
-																	function(d) {
-																		return d.dy;
-																	})
-															.attr("class",
-																	"cell")
-															.style(
-																	"fill-opacity",
-																	0.7)
-															.style(
-																	"fill",
-																	function(d) {
-																		console.log("the color palalte" + d.name);
-																		return d.children ? color(d.name)
-																				: color(d.parent.name);
+															.attr("width",function(d) {return d.dx;})
+															.attr("height",function(d) {return d.dy;})
+															.attr("class","cell")
+															.style("fill-opacity",0.7)
+															.style("fill",	function(d) {
+																    console.log(d.parent.name);
+
+																		if(tempData1.indexOf(d.parent.name) > -1){
+																			console.log("111111111111");
+																			return d.children ? color(d.name): color(d.parent.name);}
+
+
+																		if(tempData2.indexOf(d.parent.name) > -1){
+																			console.log("2222222222");
+																			return d.children ? color2(d.name): color2(d.parent.name);}
+
 																	});
+
 
 													return cell;
 												};
+
+
 												var defineCellText = function(
 														treemap, svg, cell) {
 													var cellTextSvg = cell
 															.append("svg")
-															.attr(
-																	"width",
-																	function(d) {
-																		return d.dx < 1 ? 1
-																				: (d.dx - 1);
+															.attr("width",function(d) {return d.dx < 1 ? 1: (d.dx - 1);
 																	})
 															.attr(
 																	"height",
@@ -809,12 +767,6 @@ div.tooltip h3 {
 													return cellText;
 												};
 
-												/*   var div = d3.select("body").append("div")
-												       .style("position", "relative")
-												       .style("width", (width + margin.left + margin.right) + "px")
-												       .style("height", (height + margin.top + margin.bottom) + "px")
-												       .style("left", margin.left + "px")
-												       .style("top", margin.top + "px"); */
 
 												render(
 														treemapUser1,
@@ -831,31 +783,22 @@ div.tooltip h3 {
 												}
 
 												function position() {
-													this
-															.style(
-																	"left",
-																	function(d) {
+													this.style("left",function(d) {
 																		return d.x
 																				+ "px";
 																	})
-															.style(
-																	"top",
-																	function(d) {
+															.style("top",function(d) {
 																		return d.y
 																				+ "px";
 																	})
-															.style(
-																	"width",
-																	function(d) {
+															.style("width",function(d) {
 																		return Math
 																				.max(
 																						0,
 																						d.dx - 1)
 																				+ "px";
 																	})
-															.style(
-																	"height",
-																	function(d) {
+															.style("height",function(d) {
 																		return Math
 																				.max(
 																						0,
