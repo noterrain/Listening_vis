@@ -139,12 +139,7 @@
     </div>
 
     <script>
-        var margin = {
-                top: 20,
-                right: 80,
-                bottom: 30,
-                left: 100
-            },
+        var margin = {top: 20,right: 80,bottom: 30,left: 100},
             width = $("#line-chart").width() - margin.left - margin.right,
             height = width /
             2 - margin.top - margin.bottom;
@@ -179,14 +174,8 @@
             var ot = d.timestamp;
             d.user = user;
             d.timestamp = parseDate(d.timestamp);
-            if(!d.timestamp) {
-                console.error("Invalid timestamp data " + ot);
-                return;
-            }
-            if(isNaN(d.milliseconds_played)) {
-                console.log("Invalid time played " + d.milliseconds_played);
-                return;
-            }
+            if(!d.timestamp) {console.error("Invalid timestamp data " + ot);return;}
+            if(isNaN(d.milliseconds_played)) { console.log("Invalid time played " + d.milliseconds_played); return;}
             d.hour = d.timestamp.getHours();
             d.weekDay = weekFormat(d.timestamp);
             //adjust to make Monday start of the week
@@ -562,15 +551,12 @@
 		                });
 
 
-                    user.append("text").datum(function(d) {
-                        return {
+                    user.append("text").datum(function(d) { return {
                             name: d.name,
-                            value: d.values[d.values.length - 1]
-                        };
-                    }).attr(
-                        "transform",
-                        function(d) {
-                            return "translate(" + x(+d.value.key) + "," +
+                            value: d.values[d.values.length - 1]};})
+                        .attr(
+                        "transform",function(d) {
+                                return "translate(" + x(+d.value.key) + "," +
                                 y(+d.value.value[metric]) + ")";
                         }).attr("x", 3).attr("dy", ".35em").text(function(d) {
                         return d.name;

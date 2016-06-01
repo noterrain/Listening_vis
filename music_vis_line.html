@@ -97,7 +97,7 @@
           <li><a href="/index.html">Listening behavior: Time <span class="sr-only">(current)</span></a></li>
           <li class="active"><a href="/webContent_new2/music_vis_line.html">Listening behavior: song attribute</a></li>
           <li><a href="/barchart.html">Device & Traffic source</a></li>
-          <li><a href="/treemap">Song preference</a></li>
+          <li><a href="/treemap.html">Song preference</a></li>
        </ul>
      </div><!-- /.navbar-collapse -->
    </div><!-- /.container-fluid -->
@@ -135,7 +135,7 @@
                     <div class="col-sm-12 col-md-12 col-lg-12">
                         <div style = "margin-top:10%;margin-left: -6%;"class='col-sm-1 col-md-1 col-lg-1 pull-left'><button id="prevButton" type="button" class="btn btn-default"><< Previous attribute</button></div>
                         <div style="margin-top:30px" class='line-graph col-sm-10 col-md-10 col-lg-10 col-centered' id='line-chart'></div>
-                        <div style = "margin-top: -23%" class='col-sm-1 col-md-1 col-lg-1 pull-right'><button id="nextButton" type="button" class="btn btn-default">Next attribute >></button></div>
+                        <div style = "margin-top: -26%" class='col-sm-1 col-md-1 col-lg-1 pull-right'><button id="nextButton" type="button" class="btn btn-default">Next attribute >></button></div>
                      </div>
                 </div>
              <div>
@@ -187,7 +187,7 @@
         }
 
         var weekFormat = d3.time.format("%w");
-		var weekStringFormat = d3.time.format("%a");
+		    var weekStringFormat = d3.time.format("%a");
 
         function fixData(user, d) {
             var ot = d.timestamp;
@@ -539,6 +539,7 @@
                 .attr("d", line);
 
                 var line2Svg = svg.append("path");
+                
                 line2Svg.datum([])
                 .attr("class", "line2")//.style("stroke", function(d) {
                 // 	return color("User2");
