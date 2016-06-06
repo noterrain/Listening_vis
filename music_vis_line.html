@@ -76,6 +76,12 @@
           background-color:black;
         }
 
+        .col-centered{
+          float:none;
+          margin: 0 auto;
+        }
+
+        
         nav {
           margin-left:auto;
           margin-right:auto;
@@ -114,7 +120,7 @@
                 <div class='row'>
                    <div style="font-size:14px;font-family:'Inconsolata',Monaco;" class="col-sm-8 col-md-8 col-lg-8 col-centered">
                      <p>Song attributes includes popularity, valence, familiarity, danceability:</p>
-                     <p>From July to November in 2015, The songs user1 listens are stronger than user2's in almost all song attribute. <p>
+                     <p>From July to November in 2015, the songs user1 listens to are stronger than user2's in almost all song attribute performance. <p>
                    </div>
                 </div>
                 <div class='row'>
@@ -539,7 +545,7 @@
                 .attr("d", line);
 
                 var line2Svg = svg.append("path");
-                
+
                 line2Svg.datum([])
                 .attr("class", "line2")//.style("stroke", function(d) {
                 // 	return color("User2");
