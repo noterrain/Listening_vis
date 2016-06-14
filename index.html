@@ -13,8 +13,6 @@
     <link href="scripts/Guriddo_jqGrid_JS_5/css/ui.jqgrid.css" rel="stylesheet" type="text/css">
 
     <script src='scripts/d3/d3.js' type='text/javascript'></script>
-    <script src='scripts/crossfilter/crossfilter.js' type='text/javascript'></script>
-    <script src='scripts/dc.js/dc.js' type='text/javascript'></script>
     <script src='scripts/jquery-2.2.3.js' type='text/javascript'></script>
     <script src='scripts/bootstrap-3.3.6-dist/js/bootstrap.min.js' type='text/javascript'></script>
 
@@ -139,461 +137,852 @@
     </div>
 
     <script>
-        var margin = {top: 20,right: 80,bottom: 30,left: 100},
-            width = $("#line-chart").width() - margin.left - margin.right,
-            height = width /
-            2 - margin.top - margin.bottom;
-
-        var isLeapYear = function(d) {
-            var year = d.getFullYear();
-            if((year & 3) != 0) return false;
-            return ((year % 100) != 0 || (year % 400) == 0);
-        };
-
-        // Get Day of Year
-        var getDOY = function(d) {
-            var dayCount = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
-            var mn = d.getMonth();
-            var dn = d.getDate();
-            var dayOfYear = dayCount[mn] + dn;
-            if(mn > 1 && isLeapYear(d)) dayOfYear++;
-            return dayOfYear;
-        };
-        function getWeekOfYear(d) {
-        	var wd=new Date(d);
-        	wd.setHours(0,0,0);
-            wd.setDate(wd.getDate()+4-(wd.getDay()||7));
-            if(d.getDay() == wd.getDay()) return +Math.ceil((((d-new Date(d.getFullYear(),0,1))/8.64e7)+1)/7);
-            else return 0;
-        }
-
-        var weekFormat = d3.time.format("%w");
-	    	var weekStringFormat = d3.time.format("%a");
-
-        function fixData(user, d) {
-            var ot = d.timestamp;
-            d.user = user;
-            d.timestamp = parseDate(d.timestamp);
-            if(!d.timestamp) {console.error("Invalid timestamp data " + ot);return;}
-            if(isNaN(d.milliseconds_played)) { console.log("Invalid time played " + d.milliseconds_played); return;}
-            d.hour = d.timestamp.getHours();
-            d.weekDay = weekFormat(d.timestamp);
-            //adjust to make Monday start of the week
-            if(d.weekDay == 0) d.weekDay = 6;
-            else d.weekDay -= 1;
-            d.dayOfYear = getDOY(d.timestamp);
-            d.weekOfYear = getWeekOfYear(d.timestamp);
-        }
-        var parseDate = d3.time.format("%Y/%m/%d %H:%M:%S").parse;
-
-        var x = d3.time.scale().range([0, width]);
-
-        var y = d3.scale.linear().range([height, 0]);
-
-      //  var color = d3.scale.category10();
-        var hourTickValues = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
-             	             12, 13, 14, 15, 16, 17, 18, 19, 20,
-            	             21, 22, 23, 24];
-        function hourTickFormat(v) {
-        	var s="";
-        	if(v == 0) s = "12AM";
-        	else if(v == 12) s = "Noon";
-        	else if(v > 12) s = (v-12) + "";
-        	else s=v;
-        	return s;
-        }
-        var metrics = {
-        			"hour": [
-                       {name: "totalMilliseconds", ylabel: "Total Listening Time"},
-                       {name: "averageMilliseconds", ylabel: "Average Listening Time"},
-                       {name: "averageValenceScore", ylabel: "Average Valence Score"},
-                       {name: "averageDanceability", ylabel: "Average Danceability"},
-                       {name: "averageFamiliarityScore", ylabel: "Average Familiarity"},
-                       {name: "averageSongTempo", ylabel: "Average Song Tempo"},
-                       {name: "averageRunnability", ylabel: "Average Runnability"},
-                       {name: "averageEnergy", ylabel: "Average Energy"},
-                       {name: "averagePopularity", ylabel: "Average Popularity"}
-                       ],
-                    "week":[
-        				{name: "totalMilliseconds", ylabel: "Total Listening Time"},
-                        {name: "averageMilliseconds", ylabel: "Average Listening Time"},
-                        {name: "averageValenceScore", ylabel: "Average Valence Score"},
-                        {name: "averageDanceability", ylabel: "Average Danceability"},
-                        {name: "averageFamiliarityScore", ylabel: "Average Familiarity"},
-                        {name: "averageSongTempo", ylabel: "Average Song Tempo"},
-                        {name: "averageRunnability", ylabel: "Average Runnability"},
-                        {name: "averageEnergy", ylabel: "Average Energy"},
-                        {name: "averagePopularity", ylabel: "Average Popularity"}
-        				]
-        			};
-        var xDomainMap = {
-        		"hour": [0, 23],
-        		"week" : [0, 6]
-        };
-        var yDomain =  [0, 1];
-
-        var weekTickValues = [ 0, 1, 2, 3, 4, 5, 6];
-	    	var weekTickStringValues = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-        function weekTickFormat(v) {
-        	var s = weekTickStringValues[+v];
-        	return s;
-        }
-        var showChartForMetric = null;
-        $("#hourButton").on("click", function(evt) {
-        	$("#hourButton").addClass("active");
-        	$("#weekButton").removeClass("active");
-        	showChartForMetric("totalMilliseconds", "hour");
-        });
-		$("#weekButton").on("click", function(evt) {
-        	$("#weekButton").addClass("active");
-        	$("#hourButton").removeClass("active");
-        	showChartForMetric("totalMilliseconds", "week");
-
-        });
-        var xAxis = d3.svg.axis().scale(x).orient("bottom")
-        	.tickValues(hourTickValues
-       		)
-           .tickFormat(hourTickFormat);
+              //margin for the charts
+              var margin = {
+                      top: 20,
+                      right: 80,
+                      bottom: 30,
+                      left: 100
+                  },
+                  //use "div" width as chart width, adjusted for margins
+                  width = $("#line-chart-total").width() - margin.left - margin.right,
+  				//height is half the width
+                  height = width /
+                  2 - margin.top - margin.bottom;
 
 
-        //var formatAsPercentage = d3.format("%H");
-        var formatAsPercentage = function timeConversion(millisec) {
-        var seconds = (millisec / 1000).toFixed(1);
-        var minutes = (millisec / (1000 * 60)).toFixed(1);
-        var hours = (millisec / (1000 * 60 * 60)).toFixed(1);
-        var days = (millisec / (1000 * 60 * 60 * 24)).toFixed(1);
-        if (seconds < 60) {
-            return seconds + " Sec";
-        } else if (minutes < 60) {
-            return minutes + " Min";
-        } else if (hours < 24) {
-            return hours + " Hrs";
-        } else {
-            return days + " Days"
-        }
-        }
+              //utility function to check for leap year
+              var isLeapYear = function(d) {
+                  var year = d.getFullYear();
+                  if ((year & 3) != 0) return false;
+                  return ((year % 100) != 0 || (year % 400) == 0);
+              };
+
+              // Get Day of Year
+              var getDOY = function(d) {
+                  var dayCount = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+                  var mn = d.getMonth();
+                  var dn = d.getDate();
+                  var dayOfYear = dayCount[mn] + dn;
+                  if (mn > 1 && isLeapYear(d)) dayOfYear++;
+                  return dayOfYear;
+              };
+
+              //get the week number
+              function getWeekOfYear(d) {
+                  var wd = new Date(d);
+                  wd.setHours(0, 0, 0);
+                  wd.setDate(wd.getDate() + 4 - (wd.getDay() || 7));
+                  if (d.getDay() == wd.getDay()) return +Math.ceil((((d - new Date(d.getFullYear(), 0, 1)) / 8.64e7) + 1) / 7);
+                  else return 0;
+              }
+
+              var weekFormat = d3.time.format("%w");
+              var weekStringFormat = d3.time.format("%a");
+
+              var hourBoundaryData = {};
+
+              //modify the data records from csv,
+              //add hour of day (derived from song start timestamp)
+              //add week of year
+              //adjust for songs played across hour boundaries
+
+              function fixData(user, d) {
+                  var ot = d.timestamp;
+                  d.user = user;
+                  d.timestamp = parseDate(d.timestamp);
+                  if (!d.timestamp) {
+                      console.error("Invalid timestamp data " + ot);
+                      return;
+                  }
+                  if (isNaN(d.milliseconds_played)) {
+                      console.log("Invalid time played " + d.milliseconds_played);
+                      return;
+                  }
+                  d.hour = d.timestamp.getHours();
+
+                  d.weekDay = weekFormat(d.timestamp);
+                  //adjust to make Monday start of the week
+                  if (d.weekDay == 0) d.weekDay = 6;
+                  else d.weekDay -= 1;
+                  d.dayOfYear = getDOY(d.timestamp);
+                  d.weekOfYear = getWeekOfYear(d.timestamp);
+
+                  //adjust for hour boundaries
+                  //song started at 10:59 and played for 5min, will be adjusted as
+                  //2 songs, one in 10-11 slot, and played for a min
+                  //the second in 11-12 slot, and played for 4 min
+                  //this calculation does not usually make much difference (for big data sets),
+                  //since things get averaged out over a long period of time
+                  var nt = new Date(d.timestamp.getTime() + (+d.milliseconds_played));
+                  if (nt.getHours() != d.hour) {
+                      var hb = new Date(nt.getTime());
+                      hb.setHours(nt.getHours());
+                      hb.setMinutes(0);
+                      hb.setSeconds(0);
+                      hb.setMilliseconds(0);
+                      var m1 = hb.getTime() - d.timestamp.getTime();
+                      var m2 = (+d.milliseconds_played) - m1;
+                      d.milliseconds_played = m1;
+
+                      var d2 = $.extend(true, {}, d);
+                      d2.timestamp = hb;
+                      d2.hour = d2.timestamp.getHours();
+
+                      d2.weekDay = weekFormat(d2.timestamp);
+                      //adjust to make Monday start of the week
+                      if (d2.weekDay == 0) d2.weekDay = 6;
+                      else d2.weekDay -= 1;
+                      d2.dayOfYear = getDOY(d2.timestamp);
+                      d2.weekOfYear = getWeekOfYear(d2.timestamp);
+                      if(!hourBoundaryData[user]) {
+                      	hourBoundaryData[user]=[];
+                      }
+                      hourBoundaryData[user].push(d2);
+                  }
+
+              }
+
+              //format of timestamp field in csv file
+              var parseDate = d3.time.format("%Y/%m/%d %H:%M:%S").parse;
+
+              //scale for x-axis, metric and total time charts
+              var x = d3.time.scale().range([0, width]);
+              var xTotal = d3.time.scale().range([0, width]);
+
+              //scale for y-axis, metric and total time charts
+              var y = d3.scale.linear().range([height, 0]);
+              var yTotal = d3.scale.linear().range([height, 0]);
+
+              //10 color values for the lines
+              var color = d3.scale.category10();
+
+              //put all hours into an array to use as x-axis tick values
+              var hourTickValues = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+                  12, 13, 14, 15, 16, 17, 18, 19, 20,
+                  21, 22, 23, 24
+              ];
+
+              //the hour time axis, add text to distinguish 12 midnight, and 12 noon
+              function hourTickFormat(v) {
+                  var s = "";
+                  if (v == 0) s = "12AM";
+                  else if (v == 12) s = "12 Noon";
+                  else if (v > 12) s = (v - 12) + "";
+                  else s = v;
+                  return s;
+              }
+
+              //various metrics that need to be displayed in the line charts
+              var metrics = {
+                  "hour": [{
+                      name: "averageValenceScore",
+                      ylabel: "Average Valence Score"
+                  }, {
+                      name: "averageDanceabilityScore",
+                      ylabel: "Average Danceability"
+                  }, {
+                      name: "averageFamiliarityScore",
+                      ylabel: "Average Familiarity"
+                  }, {
+                      name: "averageRunnability",
+                      ylabel: "Average Runnability"
+                  }, {
+                      name: "averageEnergy",
+                      ylabel: "Average Energy"
+                  }, {
+                      name: "averagePopularityNormalized",
+                      ylabel: "Average Popularity"
+                  }],
+                  "week": [{
+                      name: "averageValenceScore",
+                      ylabel: "Average Valence Score"
+                  }, {
+                      name: "averageDanceabilityScore",
+                      ylabel: "Average Danceability"
+                  }, {
+                      name: "averageFamiliarityScore",
+                      ylabel: "Average Familiarity"
+                  }, {
+                      name: "averageRunnability",
+                      ylabel: "Average Runnability"
+                  }, {
+                      name: "averageEnergy",
+                      ylabel: "Average Energy"
+                  }, {
+                      name: "averagePopularityNormalized",
+                      ylabel: "Average Popularity"
+                  }]
+              };
+
+              //assign domain for hour and week
+              //for hour we use 24, the value at 0 is used as value at hour 24
+              var xDomainMap = {
+                  "hour": [0, 24],
+                  "week": [0, 6]
+              };
+
+              //all the metrics used have a range of 0-1
+              var yDomain = [0, 1];
+
+              var weekTickValues = [0, 1, 2, 3, 4, 5, 6];
+              var weekTickStringValues = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+              //convert day of week value [0-6] to Mon to Sun
+              function weekTickFormat(v) {
+                  var s = weekTickStringValues[+v];
+                  return s;
+              }
+              var showChartForMetric = null;
+
+              //select firt chart from the list of metrics charts
+              var selectedIndex = 0;
+
+              //default xaxis type
+              var xAxisType = "hour";
+              var xAxisTypeTotal = "hour";
+
+              //cycle through the metrics charts when previous or next button is clicked
+              $("#prevButton").on("click", function(evt) {
+                  selectedIndex--;
+                  if (selectedIndex < 0) selectedIndex = metrics[xAxisType].length - 1;
+                  else if (selectedIndex >= metrics[xAxisType].length) selectedIndex = 0;
+                  if (metrics[xAxisType][selectedIndex]) showChartForMetric(metrics[xAxisType][selectedIndex]["name"], xAxisType);
+              });
+
+              $("#nextButton").on("click", function(evt) {
+
+                  selectedIndex++;
+                  if (selectedIndex < 0) selectedIndex = metrics[xAxisType].length - 1;
+                  else if (selectedIndex >= metrics[xAxisType].length) selectedIndex = 0;
+                  if (metrics[xAxisType][selectedIndex]) showChartForMetric(metrics[xAxisType][selectedIndex]["name"], xAxisType);
+
+              });
+
+              //show metric when one of the metric button is clicked
+              $(document).on('change', 'input:radio[id^="metric_"]', function(event) {
+                  selectedIndex = $(event.target)[0].value;
+                  if (metrics[xAxisType][selectedIndex]) showChartForMetric(metrics[xAxisType][selectedIndex]["name"], xAxisType);
+
+              });
+
+              //handle switch between hour and week charts
+              $("#hourButton").on("click", function(evt) {
+                  $("#hourButton").addClass("active");
+                  $("#weekButton").removeClass("active");
+                  xAxisType = "hour";
+                  if (metrics[xAxisType][selectedIndex]) showChartForMetric(metrics[xAxisType][selectedIndex]["name"], "hour");
+              });
+              $("#weekButton").on("click", function(evt) {
+                  $("#weekButton").addClass("active");
+                  $("#hourButton").removeClass("active");
+                  xAxisType = "week";
+                  if (metrics[xAxisType][selectedIndex]) showChartForMetric(metrics[xAxisType][selectedIndex]["name"], "week");
+
+              });
+
+              //handle switch between hour and week charts for total time chart
+              $("#hourButtonTotal").on("click", function(evt) {
+                  $("#hourButtonTotal").addClass("active");
+                  $("#weekButtonTotal").removeClass("active");
+                  xAxisTypeTotal = "hour";
+                  showChartForMetric("totalMilliseconds", "hour", true);
+              });
+              $("#weekButtonTotal").on("click", function(evt) {
+                  $("#weekButtonTotal").addClass("active");
+                  $("#hourButtonTotal").removeClass("active");
+                  xAxisTypeTotal = "week";
+                  showChartForMetric("totalMilliseconds", "week", true);
+
+              });
+
+
+              //place x axis at bottom,
+              //using scale x defined above
+              //and format tick text to show 12AM, 12 noon (see hourTickFormat function above)
+              var xAxis = d3.svg.axis().scale(x).orient("bottom")
+                  .tickValues(hourTickValues)
+                  .tickFormat(hourTickFormat);
+              var xAxisTotal = d3.svg.axis().scale(xTotal).orient("bottom")
+                  .tickValues(hourTickValues)
+                  .tickFormat(hourTickFormat);
+              //place y axis on the left, using scale y
+              var yAxis = d3.svg.axis().scale(y).orient("left");
+              var yAxisTotal = d3.svg.axis().scale(yTotal).tickFormat(d3.format(formatAsDate)).orient("left");
+
+              //the following "line" is used for all the metrics,  depending on the chart chosen
+              //the value function will be changed
+              var line = d3.svg.line().interpolate("basis").x(function(d) {
+                  return x(+d[xAxisType]);
+              }).y(function(d) {
+                  return y(+d.totalMilliseconds);
+              });
+              var lineTotal = d3.svg.line().interpolate("basis").x(function(d) {
+                  return xTotal(+d[xAxisType]);
+              }).y(function(d) {
+                  return yTotal(+d.totalMilliseconds);
+              });
+
+              //create a chart with specified width, height at the corresponding div
+              var vis = d3.select("#line-chart-metrics").append("svg").attr("width",
+                  width + margin.left + margin.right).attr("height",
+                  height + margin.top + margin.bottom);
+
+              var visTotal = d3.select("#line-chart-total").append("svg").attr("width",
+                  width + margin.left + margin.right).attr("height",
+                  height + margin.top + margin.bottom);
+
+              //create a rectangle element to cover the entire chart
+              //when this invisible rectangle is dragged, we handle the event to switch charts
+              //*not used*
+              var rect = vis.append("rect").attr("width", width)
+                  .attr("height", height)
+                  .attr("fill", "none")
+                  .style("pointer-events", "all");
+
+
+              var svg = vis.append("g").attr(
+                  "transform",
+                  "translate(" + margin.left + "," + margin.top + ")");
+
+              var svgTotal = visTotal.append("g").attr(
+                  "transform",
+                  "translate(" + margin.left + "," + margin.top + ")");
+
+
+              var groupsMap = {};
+
+              d3.csv("data/User1.csv", function(error, user1Data) {
+                  if (error)
+                      throw error;
+                  d3.csv("data/User2.csv", function(error, user2Data) {
+                      if (error)
+                          throw error;
+                      var data = []; //consolidated user data
+
+
+                      //fix and join the user data into one array
+                      //add extra records for songs that cross hour boundaries
+                      user1Data.forEach(fixData.bind(undefined, "User1"));
+                      user2Data.forEach(fixData.bind(undefined, "User2"));
+
+                      user1Data = user1Data.concat(hourBoundaryData["User1"]);
+                      user2Data = user2Data.concat(hourBoundaryData["User2"]);
+
+                      var data = user1Data.concat(user2Data);
+                      //used to get number of days (end date - start date) in the data set
+                      //this number is used for averaging
+                      var dayExtent = d3.extent(data, function(d) {
+                          return d.dayOfYear;
+                      });
+
+                      //number of weeks in the data set
+
+                      var weekExtent = d3.extent(data, function(d) {
+                          return d.weekOfYear;
+                      });
+
+
+                      //Calculation of average energy for 2 songs is like this
+                      //song 1 energy 0.2, played for 1000ms,  song 2, energy 0.8, played for 1000ms
+                      //average energy is (0.2*1000 + 0.8*100)/1100 is 0.2545
+                      //if we average by song, then it will be (0.2+0.8)/2 = 0.5
+                      //we use averaging by milliseconds played
 
 
 
-        var yAxis = d3.svg.axis().scale(y).orient("left").innerTickSize(-width).tickFormat(formatAsPercentage);
+                      //this function gets data summary for specfied x dimension (hour or week)
+                      //sorts it by hour or day of week, adds zeros for missing time slots
+                      //sorting by x values is needed to plot the line charts
+                      function getSummaryDataForUser(userData, xdim) {
 
-        var line = d3.svg.line().interpolate("basis").x(function(d) {
-            return x(+d.key);
-        }).y(function(d) {
-            return y(+d.value.totalMilliseconds);
-        });
+                      	var rollupFn = function(v) {
+                          	return {
+                          		totalMilliseconds: d3.sum(v, function(d) {
+                          			return d.milliseconds_played;
+                          		}),
+                          		totalValenceScore: d3.sum(v, function(d) {
+                          			return d.valence_score ?
+                          					d.valence_score*d.milliseconds_played : 0;
+                          		}),
+                          		totalDanceabilityScore: d3.sum(v, function(d) {
+                          			return d.danceability_score ?
+                          					d.danceability_score*d.milliseconds_played : 0;
+                          		}),
+                          		totalFamiliarityScore: d3.sum(v, function(d) {
+                          			return d.familiarity_score? d.familiarity_score*d.milliseconds_played :0;
+                          		}),
+                          		totalSongTempo: d3.sum(v, function(d) {
+                          			return d.song_tempo?d.song_tempo*d.milliseconds_played : 0;
+                          		}),
+                          		totalRunnability: d3.sum(v, function(d) {
+                          			return d.runnability?d.runnability*d.milliseconds_played : 0;
+                          		}),
+                          		totalEnergy: d3.sum(v, function(d) {
+                          			return d.energy?d.energy*d.milliseconds_played:0;
+                          		}),
+                          		totalPopularityNormalized: d3.sum(v, function(d) {
+                          			return d.popularity_normalized?d.popularity_normalized*d.milliseconds_played : 0;
+                          		})
+                          	}
+                          };
 
-  //
-  //  function formatMilliseconds(ms) {
-	// 		var hours = Math.floor(ms/3600000);
-	// 		var min = 0;
-	// 		 min = Math.floor( (ms -hours * 3600000) / 60000 );
-	// 		var sec = (ms - hours * 3600000 - min * 60000) / 1000;
-	// 		if(hours>0) return hours+"h "+min+"m "+sec+"s";
-	// 		else if(min>0) return min+"m "+sec+"s";
-	// 		else return sec+"s";
-	// 	}
+                        //group to get totals, counts for each hour slot
+                          var hourData = d3.nest()
+                              .key(function(d){return d.hour;})
+                              .rollup(rollupFn)
+                              .map(userData);
+                          hourData = d3.entries(hourData).map(function(d) {
+                          	var v = d.value;
+                          	v["hour"] = d.key;
+                          	v["key"] =  d.key;
+                          	return v;
+                          });
 
-		var vis = d3.select("#line-chart").append("svg").attr("width",
-	            width + margin.left + margin.right).attr("height",
-	                    height + margin.top + margin.bottom);
-        var svg = vis.append("g").attr(
-            "transform",
-            "translate(" + margin.left + "," + margin.top + ")");
-		var crossfilterGroupsMap={};
+                        //group to get totals, counts for each day of week slot
+                          var weekData = d3.nest().key(function(d) {
+                              return d.weekDay;
+                          }).rollup(rollupFn).map(userData);
+                          weekData = d3.entries(weekData).map(function(d) {
+                          	var v = d.value;
+                          	v["week"] = d.key;
+                          	v["key"] =  d.key;
+                          	return v;
+                          });
 
-       d3.csv("data/User1.csv", function(error, user1Data) {
-            if(error)
-                throw error;
-            d3.csv("data/User2.csv", function(error, user2Data) {
-                if(error)
-                    throw error;
-                var data = []; //consolidated user data
-                //just join the user data for now
-                //TODO will need to account for songs that cross hour boundaries
-
-                user1Data.forEach(fixData.bind(undefined, "User1"));
-                user2Data.forEach(fixData.bind(undefined, "User2"));
-				data = user1Data.concat(user2Data);
-
-                var facts = crossfilter(data); // Gets our 'facts' into crossfilter
-				var hourMap = d3.map(data, function(d) {
-					return d.hour;
-				});
-                var weekDayMap = d3.map(data, function(d) {
-                	return d.weekDay;
-                });
-                var dayExtent = d3.extent(data, function(d) {
-                	return d.dayOfYear;
-                });
-                var weekExtent = d3.extent(data, function(d) {
-                	return d.weekOfYear;
-                });
-                var all = facts.groupAll();
-				var userDimension = facts.dimension(function(d) {
-					return d.user;
-				});
-
-
-                function getSummaryDataForUser(filteredData, xdim) {
-                	var filteredFacts = crossfilter(filteredData);
-                	var hourDimension = filteredFacts.dimension(function(d) {
-                        return d.hour;
-                    });
-                    var weekDayDimension = filteredFacts.dimension(function(d) {
-                        return d.weekDay;
-                    });
+                          groupsMap["hour"] = hourData;
 
 
-                    var hourGroup = hourDimension.group().reduce(
-                        function(p, v) {
-                            ++p.number;
-                            p.totalMilliseconds += +v.milliseconds_played;
-                            p.totalValenceScore += (v.milliseconds_played * ((!v.valence_score || v.valence_score == "null") ? 0 : +v.valence_score));
-                            p.totalDanceabilityScore += (v.milliseconds_played * ((!v.danceability_score || v.danceability_score == "null") ? 0 : +v.danceability_score));
-                            p.totalFamiliarityScore += (v.milliseconds_played * ((!v.familiarity_score || v.familiarity_score == "null") ? 0 : +v.familiarity_score));
-                            p.totalSongTempo += (v.milliseconds_played * ((!v.song_tempo || v.song_tempo == "null") ? 0 : +v.song_tempo));
-                            p.totalRunnability += (v.milliseconds_played * ((!v.runnability || v.runnability == "null") ? 0 : +v.runnability));
-                            p.totalEnergy += (v.milliseconds_played * ((!v.energy || v.energy == "null") ? 0 : +v.energy));
-                            p.totalPopularityNormalized += (v.milliseconds_played * ((!v.popularity_normalized || v.popularity_normalized == "null") ? 0 : +v.popularity_normalized));
-                            return p;
-                        },
-                        function(p, v) {
-                            --p.number;
-                            p.totalMilliseconds -= +v.milliseconds_played;
-                            p.totalValenceScore -= (v.milliseconds_played * ((!v.valence_score || v.valence_score == "null") ? 0 : +v.valence_score));
-                            p.totalDanceabilityScore -= (v.milliseconds_played * ((!v.danceability_score || v.danceability_score == "null") ? 0 : +v.danceability_score));
-                            p.totalFamiliarityScore -= (v.milliseconds_played * ((!v.familiarity_score || v.familiarity_score == "null") ? 0 : +v.familiarity_score));
-                            p.totalSongTempo -= (v.milliseconds_played * ((!v.song_tempo || v.song_tempo == "null") ? 0 : +v.song_tempo));
-                            p.totalRunnability -= (v.milliseconds_played * ((!v.runnability || v.runnability == "null") ? 0 : +v.runnability));
-                            p.totalEnergy -= (v.milliseconds_played * ((!v.energy || v.energy == "null") ? 0 : +v.energy));
-                            p.totalPopularityNormalized -= (v.milliseconds_played * ((!v.popularity_normalized || v.popularity_normalized == "null") ? 0 : +v.popularity_normalized));
-                            return p;
-                        },
-                        function() {
-                            return {
-                                number: 0,
-                                totalMilliseconds: 0,
-                                totalValenceScore: 0,
-                                totalDanceabilityScore: 0,
-                                totalFamiliarityScore: 0,
-                                totalSongTempo: 0,
-                                totalRunnability: 0,
-                                totalEnergy: 0,
-                                totalPopularityNormalized: 0
-                            }
-                        });
-                    crossfilterGroupsMap["hour"] = hourGroup;
-
-                    var weekDayGroup = weekDayDimension.group().reduce(
-                            function(p, v) {
-                                ++p.number;
-                                p.user = v.user;
-                                p.totalMilliseconds += +v.milliseconds_played;
-                                p.totalValenceScore += (v.milliseconds_played * ((!v.valence_score || v.valence_score == "null") ? 0 : +v.valence_score));
-                                p.totalDanceabilityScore += (v.milliseconds_played * ((!v.danceability_score || v.danceability_score == "null") ? 0 : +v.danceability_score));
-                                p.totalFamiliarityScore += (v.milliseconds_played * ((!v.familiarity_score || v.familiarity_score == "null") ? 0 : +v.familiarity_score));
-                                p.totalSongTempo += (v.milliseconds_played * ((!v.song_tempo || v.song_tempo == "null") ? 0 : +v.song_tempo));
-                                p.totalRunnability += (v.milliseconds_played * ((!v.runnability || v.runnability == "null") ? 0 : +v.runnability));
-                                p.totalEnergy += (v.milliseconds_played * ((!v.energy || v.energy == "null") ? 0 : +v.energy));
-                                p.totalPopularityNormalized += (v.milliseconds_played * ((!v.popularity_normalized || v.popularity_normalized == "null") ? 0 : +v.popularity_normalized));
-                                return p;
-                            },
-                            function(p, v) {
-                                --p.number;
-                                p.user = v.user;
-                                p.totalMilliseconds -= +v.milliseconds_played;
-                                p.totalValenceScore -= (v.milliseconds_played * ((!v.valence_score || v.valence_score == "null") ? 0 : +v.valence_score));
-                                p.totalDanceabilityScore -= (v.milliseconds_played * ((!v.danceability_score || v.danceability_score == "null") ? 0 : +v.danceability_score));
-                                p.totalFamiliarityScore -= (v.milliseconds_played * ((!v.familiarity_score || v.familiarity_score == "null") ? 0 : +v.familiarity_score));
-                                p.totalSongTempo -= (v.milliseconds_played * ((!v.song_tempo || v.song_tempo == "null") ? 0 : +v.song_tempo));
-                                p.totalRunnability -= (v.milliseconds_played * ((!v.runnability || v.runnability == "null") ? 0 : +v.runnability));
-                                p.totalEnergy -= (v.milliseconds_played * ((!v.energy || v.energy == "null") ? 0 : +v.energy));
-                                p.totalPopularityNormalized -= (v.milliseconds_played * ((!v.popularity_normalized || v.popularity_normalized == "null") ? 0 : +v.popularity_normalized));
-                                return p;
-                            },
-                            function() {
-                                return {
-                                    number: 0,
-                                    totalMilliseconds: 0,
-                                    totalValenceScore: 0,
-                                    totalDanceabilityScore: 0,
-                                    totalFamiliarityScore: 0,
-                                    totalSongTempo: 0,
-                                    totalRunnability: 0,
-                                    totalEnergy: 0,
-                                    totalPopularityNormalized: 0
-                                }
-                            });
-                    crossfilterGroupsMap["week"] = weekDayGroup;
-                    userDimension.filter(null);
-                    return crossfilterGroupsMap[xdim].top(Infinity).sort(sortByHourAscending);
-                }
+                          groupsMap["week"] = weekData;
 
 
-                function sortByHourAscending(a, b) {
-                    // Dates will be cast to numbers automagically:
-                    return +a.key - (b.key);
-                }
+                          var groupData=groupsMap[xdim];
+
+                          if (xdim == "hour" || xdim == "week") {
+                          	//if any hour slot or day of week, has no data in the csv data set
+                          	//then put zero counts, totals for that hour/day of week
+                              var missing = [];
+                              var l = 24;
+                              if (xdim == "week") l = 6;
+                              var zeroData = {};
+                              for (var i = 0; i <= l; i++) {
+                                  var found = false;
+                                  groupData.forEach(function(d) {
+                                      if (d[xdim] == i) {
+                                          found = true;
+                                          //console.log("found "+d[xdim]);
+                                      }
+                                      if (d[xdim] == 0) zeroData = d;
+                                  });
+                                  if (!found && i != 24) missing.push(i);
+
+                              }
+                              missing.forEach(function(d) {
+                                  var zdv = {
+
+                                          totalMilliseconds: 0,
+                                          totalValenceScore: 0,
+                                          totalDanceabilityScore: 0,
+                                          totalFamiliarityScore: 0,
+                                          totalSongTempo: 0,
+                                          totalRunnability: 0,
+                                          totalEnergy: 0,
+                                          totalPopularityNormalized: 0,
+                                          totalValenceScoreSong: 0,
+                                          totalDanceabilityScoreSong: 0,
+                                          totalFamiliarityScoreSong: 0,
+                                          totalSongTempoSong: 0,
+                                          totalRunnabilitySong: 0,
+                                          totalEnergySong: 0,
+                                          totalPopularityNormalizedSong: 0
+                                  };
+                                  zdv[xdim]=d;
+                                  zdv["key"]=d;
+                                  groupData.push(zdv);
+                              });
+                              if (xdim == "hour") {
+                                  //use value at hour 0, as value at hour 24
+
+                                  var gzd = zeroData[xdim] ? $.extend({},zeroData) : {
+                                          totalMilliseconds: 0,
+                                          totalValenceScore: 0,
+                                          totalDanceabilityScore: 0,
+                                          totalFamiliarityScore: 0,
+                                          totalSongTempo: 0,
+                                          totalRunnability: 0,
+                                          totalEnergy: 0,
+                                          totalPopularityNormalized: 0,
+                                          totalValenceScoreSong: 0,
+                                          totalDanceabilityScoreSong: 0,
+                                          totalFamiliarityScoreSong: 0,
+                                          totalSongTempoSong: 0,
+                                          totalRunnabilitySong: 0,
+                                          totalEnergySong: 0,
+                                          totalPopularityNormalizedSong: 0
+                                      };
+                                  gzd["hour"]=24;
+                                  gzd["key"]=24;
+                                  groupData.push(gzd);
+                              }
+                          }
+
+                          //line charts require data to be sorted by ascending x-axis values
+                          return groupData.sort(sortByKeyAscending);
+                      }
+
+                      //simple comparison function for numbers, used to sort array
+                      function sortByKeyAscending(a, b) {
+                          // Dates will be cast to numbers automagically:
+                          return +a.key - (+b.key);
+                      }
 
 
 
+  					//create x and y axes
+                      var xAxisSvg = svg.append("g").attr("class", "x axis").attr("transform",
+                          "translate(0," + height + ")").call(xAxis);
 
-                var xAxisSvg = svg.append("g").attr("class", "x axis").attr("transform",
-                    "translate(0," + height + ")").call(xAxis);
+                      var yAxisSvg = svg.append("g").attr("class", "y axis").call(yAxis);
 
-                var yAxisSvg = svg.append("g").attr("class", "y axis").call(yAxis);
-                var yAxisText = yAxisSvg.append("text")
-                    .attr("transform", "rotate(0)").attr("x", 160).attr("y", -12).attr("dy",
-                        ".71em").style("text-anchor", "end").text(
-                        "Total Listening Time (July-Nov)");
-                // var yAxisText = yAxisSvg.append("text")
-                //         .attr("transform", "rotate(0)")
-                //         .attr("y", -18)
-                //         .attr("x", 100)
-                //         .attr("dy", ".71em")
-                //         .style("text-anchor", "end")
-                //         .text("Total Listening Time");
+                      //add y axis label for metrics chart
+                      var yAxisText = yAxisSvg.append("text")
+                          .attr("transform", "rotate(-90)").attr("y", 6).attr("dy",
+                              "-60px").style("text-anchor", "end").text(
+                              metrics["hour"][0].ylabel);
 
-				var users = [];
+                      //create x and y axes for total time played chart
+                      var xAxisSvgTotal = svgTotal.append("g").attr("class", "x axis").attr("transform",
+                          "translate(0," + height + ")").call(xAxisTotal);
 
-                var user = svg.selectAll(".user").data(users);
-                user.enter().append("g")
-                    .attr("class", "user");
-                var userLines =
-                user.append("path").attr("class", "line");
-                	userLines.attr("d", function(d) {
-                    return line(d.values);
-                });
+                      var yAxisSvgTotal = svgTotal.append("g").attr("class", "y axis").call(yAxisTotal);
 
-				user.exit().remove();
+                      //add label for y-axis for total time played chart
+                      var yAxisTextTotal = yAxisSvgTotal.append("text")
+                          .attr("transform", "rotate(-90)").attr("y", 6).attr("dy",
+                              "-60px").style("text-anchor", "end").text(
+                              "Total Listening Time (milliseconds)");
 
-				var firstTime = true;
-                //this function is assigned to variable in global scope
-                 showChartForMetric = function(metric, xdim) {
-                	userDimension.filter("User1");
-                    var u1Data = getSummaryDataForUser(userDimension.top(Infinity), xdim);
-                    var factor=1;
-                    if(xdim == "hour") {
-                    	factor = dayExtent[1]-dayExtent[0];
-                    } else {
-                    	factor = weekExtent[1]-weekExtent[0];
-                    }
-                    var totalMetric=metric;
-                    if(metric.match(/^average/)) {
-                    	totalMetric = "total"+metric.substring(7);
-                    } else {
-                    	factor = 1;
-                    }
-                    userDimension.filter("User2");
-                    var u2Data = getSummaryDataForUser(userDimension.top(Infinity), xdim);
-                    console.log(u2Data);
-                    users = [{
-                        name: "User1",
-                        values: u1Data
-                    }, {
-                        name: "User2",
-                        values: u2Data
-                    }];
+                      //define line for User1, use empty data set, line will
+                      //be updated with user1 data later
+                      var line1Svg = svg.append("path");
+                      line1Svg.datum([])
+                          .attr("class", "line1")
+                          .attr("d", line).style("stroke", function(d) {
+                              return color("User1");
+                          });
 
-                	userDimension.filter(null);
+                      //define line for User1
+                      var line2Svg = svg.append("path");
+                      line2Svg.datum([])
+                          .attr("class", "line2")
+                          .attr("d", line).style("stroke", function(d) {
+                              return color("User2");
+                          });
 
-                    var group = crossfilterGroupsMap[xdim];
-                    var fullData=group.top(Infinity);
+                      //define lines for total time chart
+                      var line1SvgTotal = svgTotal.append("path");
+                      line1SvgTotal.datum([])
+                          .attr("class", "line1").style("stroke", function(d) {
+                              return color("User1");
+                          })
+                          .attr("d", lineTotal);
 
-                    var metricMin = d3.min(fullData, function(d) {
-                        return d.value[metric];
-                    });
-                    var metricMax = d3.max(fullData, function(d) {
-                        return d.value[metric];
-                    });
-                    y.domain([0, metricMax]);
-                    x.domain(xDomainMap[xdim]);
+                      var line2SvgTotal = svgTotal.append("path");
+                      line2SvgTotal.datum([])
+                          .attr("class", "line2").style("stroke", function(d) {
+                              return color("User2");
+                          })
+                          .attr("d", lineTotal);
 
-                    if(totalMetric != metric) {
-                    	var metricMin = d3.min(fullData, function(d) {
-                            return d.value[metric]/(d.value.totalMilliseconds*factor);
-                        });
-                        var metricMax = d3.max(fullData, function(d) {
-                            return d.value[metric]/(d.value.totalMilliseconds*factor);
-                        });
-                        y.domain([0, metricMax]);
-                        x.domain(xDomainMap[xdim]);
-                		line = d3.svg.line().interpolate("basis").x(function(d) {
-                        	return x(+d.key);
-                    	}).y(function(d) {
-                        	return y((+d.value[metric]/(d.value.totalMilliseconds*factor)));
-                    	});
-                    } else {
-                    	var metricMin = d3.min(fullData, function(d) {
-                            return d.value[metric];
-                        });
-                        var metricMax = d3.max(fullData, function(d) {
-                            return d.value[metric];
-                        });
-                        y.domain([0, metricMax]);
-                        x.domain(xDomainMap[xdim]);
-                		line = d3.svg.line().interpolate("basis").x(function(d) {
-                        	return x(+d.key);
-                    	}).y(function(d) {
-                        	return y(+d.value[metric]);
-                    	});
-                    }
+                      //define text to be user to label the line
+                      //this text ("User1", or "User2") is put near the endpoint of the line
+                      var line1Text = svg.append("text")
+                          .datum([])
+                          .attr("class", "label")
+                          .attr("transform", "translate(0,0)")
+                          .attr("x", 3)
+                          .attr("dy", ".35em")
+                          .text("");
+                      var line2Text = svg.append("text")
+                          .datum([])
+                          .attr("class", "label")
+                          .attr("transform", "translate(0,0)")
+                          .attr("x", 3)
+                          .attr("dy", ".35em")
+                          .text("");
 
-                	var t0 = svg.transition().duration(750);
-                    user = svg.selectAll(".user").data([]);
-                    user.exit().remove();
-                   user = svg.selectAll(".user").data(users);
-		                    user.enter().append("g")
-		                    .attr("class", "user");
-		                user.append("path").attr("class", "line").attr("d", function(d) {
-		                    return line(d.values);
-		                });
+                    //define text to be user to label the line for total time chart
+                      var line1TextTotal = svgTotal.append("text")
+                          .datum([])
+                          .attr("class", "label")
+                          .attr("transform", "translate(0,0)")
+                          .attr("x", 3)
+                          .attr("dy", ".35em")
+                          .text("User1");
+                      var line2TextTotal = svgTotal.append("text")
+                          .datum([])
+                          .attr("class", "label")
+                          .attr("transform", "translate(0,0)")
+                          .attr("x", 3)
+                          .attr("dy", ".35em")
+                          .text("User2");
 
 
-                    user.append("text").datum(function(d) { return {
-                            name: d.name,
-                            value: d.values[d.values.length - 1]};})
-                        .attr(
-                        "transform",function(d) {
-                                return "translate(" + x(+d.value.key) + "," +
-                                y(+d.value.value[metric]) + ")";
-                        }).attr("x", 3).attr("dy", ".35em").text(function(d) {
-                        return d.name;
-                    });
-                    if(xdim == "hour") {
-                    	xAxis.tickValues(hourTickValues).tickFormat(hourTickFormat);
-                    } else {
-                    	xAxis.tickValues(weekTickValues).tickFormat(weekTickFormat)
-                    }
-                    if(firstTime) {
-                    	xAxisSvg.call(xAxis);
-                    	yAxisSvg.call(yAxis);
-                    	firstTime = false;
-                    } else {
+                      var firstTime = true;
 
-	                    xAxisSvg
-	                    .transition().duration(500).ease("sin-in-out")  // https://github.com/mbostock/d3/wiki/Transitions#wiki-d3_ease
-	                    .call(xAxis);
-	                    yAxisSvg
-	                    .transition().duration(500).ease("sin-in-out")  // https://github.com/mbostock/d3/wiki/Transitions#wiki-d3_ease
-	                    .call(yAxis);
-	                    var m=metrics[xdim];
-	                    var ylabel="Total Listening Time";
+                      //this function is assigned to variable in global scope
+                      showChartForMetric = function(metric, xdim) {
+                          var isTotal = false;
+                          if (metric == "totalMilliseconds") isTotal = true;
+                          var xLocal, yLocal, xAxisLocal, yAxisLocal,
+                              xAxisSvgLocal, yAxisSvgLocal, svgLocal, line1SvgLocal, line2SvgLocal,
+                              line1TextLocal, line2TextLocal, yAxisTextLocal, lineLocal;
+                          if (isTotal) {
+                              svgLocal = svgTotal;
+                              xLocal = xTotal;
+                              yLocal = yTotal;
+                              xAxisLocal = xAxisTotal;
+                              xAxisSvgLocal = xAxisSvgTotal;
+                              yAxisLocal = yAxisTotal;
+                              yAxisSvgLocal = yAxisSvgTotal;
+                              line1SvgLocal = line1SvgTotal;
+                              line2SvgLocal = line2SvgTotal;
+                              line1TextLocal = line1TextTotal;
+                              line2TextLocal = line2TextTotal;
+                              yAxisTextLocal = yAxisTextTotal;
+                              lineLocal = lineTotal;
+                          } else {
+                              svgLocal = svg;
+                              xLocal = x;
+                              yLocal = y;
+                              xAxisLocal = xAxis;
+                              xAxisSvgLocal = xAxisSvg;
+                              yAxisLocal = yAxisTotal;
+                              yAxisSvgLocal = yAxisSvgTotal;
 
-	                    m.forEach(function(d) {
-	                    	if(d.name == metric) ylabel=d.ylabel;
-	                    });
-	                    //yAxisText.text(ylabel);
-                    }
+                              line1SvgLocal = line1Svg;
+                              line2SvgLocal = line2Svg;
+                              line1TextLocal = line1Text;
+                              line2TextLocal = line2Text;
+                              yAxisTextLocal = yAxisText;
+                              lineLocal = line;
 
-                }
+                          }
 
-                 showChartForMetric("totalMilliseconds", "hour");
 
-            }); //User2 data
-        }); //User1 data
-    </script>
+
+                          var u1Data = getSummaryDataForUser(user1Data, xdim);
+                          var factor = 1;
+
+                          //for averaging we need the total number of days
+                          //or weeks in the dataset
+                          if (xdim == "hour") {
+                              factor = dayExtent[1] - dayExtent[0];
+                          } else {
+                              factor = weekExtent[1] - weekExtent[0];
+                          }
+                          var totalMetric = metric;
+                          if (metric.match(/^average/)) {
+                              totalMetric = "total" + metric.substring(7);
+                          } else {
+                              factor = 1;
+                          }
+
+                          //get data for User2
+                          var u2Data = getSummaryDataForUser(user2Data, xdim);
+                          users = [{
+                              name: "User1",
+                              values: u1Data
+                          }, {
+                              name: "User2",
+                              values: u2Data
+                          }];
+
+
+                          //get all data for both users, used to scale the y-axis for total time chart
+
+                          var group = groupsMap[xdim];
+                          var fullData = u1Data.concat(u2Data);
+
+
+
+                          if (!isTotal) {
+                          	//get min and max values for the metric chosen
+                              var metricExtent = d3.extent(fullData, function(d) {
+                                  if (metric == "totalMilliseconds")
+                                      return d[totalMetric];
+                                  if (metric != "averageMilliseconds" && d.totalMilliseconds == 0) return 0;
+                                  if (metric == "averageMilliseconds")
+                                      return d[totalMetric] / factor;
+                                  return d[totalMetric] / (d.totalMilliseconds);
+                              });
+                          	var metricMin = metricExtent[0];
+                          	var metricMax = metricExtent[1];
+
+
+                              	//use default domain [0,1], since all metrics fall
+                              	//within this rangle for charts other than total time played chart
+                                  yLocal.domain(yDomain);
+
+                              	//chose x-axis domain based on whether it is a hour or week chart
+                                  xLocal.domain(xDomainMap[xdim]);
+
+                          	//use the data for the user to draw the line
+                              lineLocal = d3.svg.line().interpolate("basis").x(function(d) {
+                                  return xLocal(+d[xdim]);
+                              }).y(function(d) {
+                                  if (metric == "totalMilliseconds")
+                                      return yLocal(+d["totalMilliseconds"]);
+                                  if (d.totalMilliseconds == 0) return yLocal(0);
+                                  if (metric == "averageMilliseconds")
+                                      return yLocal(+d[totalMetric] / factor);
+                                  return yLocal((+d[totalMetric] / (d.totalMilliseconds)));
+                              });
+                          } else {
+
+                          	//this is a total time chart
+                              var metricMin = d3.min(fullData, function(d) {
+                                  return d[metric];
+                              });
+                              var metricMax = d3.max(fullData, function(d) {
+                                  return d[metric];
+                              });
+
+                              //set the domain based on the range of total time played
+                              yLocal.domain([0, metricMax * 1.3]);
+                              xLocal.domain(xDomainMap[xdim]);
+
+                              //use the data for user to draw the line
+                              lineLocal = d3.svg.line().interpolate("basis").x(function(d) {
+                                  return xLocal(+d[xdim]);
+                              }).y(function(d) {
+                                  return yLocal(+d[metric]);
+                              });
+                          }
+
+
+                      	//set the x-axis tick values
+                          if (xdim == "hour") {
+                              xAxisLocal.tickValues(hourTickValues).tickFormat(hourTickFormat);
+                          } else {
+                              xAxisLocal.tickValues(weekTickValues).tickFormat(weekTickFormat)
+                          }
+
+                          xAxisSvgLocal
+                              .transition().duration(500).ease("sin-in-out") // https://github.com/mbostock/d3/wiki/Transitions#wiki-d3_ease
+                              .call(xAxisLocal);
+
+                          var t0 = svgLocal.transition().duration(750);
+
+                          //set the actual data to be used for the lines,
+                          //and transition to the new data
+                          line1SvgLocal
+                              .datum(u1Data);
+                          line2SvgLocal.datum(u2Data);
+
+                          //redraw the lines with the previously assigned data
+
+                          t0.selectAll(".line1").attr("d", lineLocal)
+                              .attr("class", "line1");
+                          t0.selectAll(".line2").attr("d", lineLocal)
+                              .attr("class", "line2");
+
+
+                          if (!isTotal) {
+                              //metric is not a "total" metric
+                              //label the lines, using the data value at the end of the line
+                              line1TextLocal
+                                  .datum(u1Data[u1Data.length - 1])
+                                  .attr("class", "label")
+                                  .attr("transform", function(d) {
+                                      if (metric == "averageMilliseconds")
+                                          return "translate(" + xLocal(+d[xdim]) + "," +
+                                              yLocal((+d[totalMetric] / (factor))) + ")";
+                                      if (d.totalMilliseconds == 0)
+                                          return "translate(" + xLocal(+d[xdim]) + "," + yLocal(0) + ")";
+                                      return "translate(" + xLocal(+d[xdim]) + "," +
+                                          yLocal((+d[totalMetric] / (d.totalMilliseconds))) + ")";
+                                  })
+                                  .attr("x", 3)
+                                  .attr("dy", ".35em")
+                                  .text("User1");
+                              line2TextLocal
+                                  .datum(u2Data[u2Data.length - 1])
+                                  .attr("class", "label")
+                                  .attr("transform", function(d) {
+                                      if (metric == "averageMilliseconds")
+                                          return "translate(" + xLocal(+d[xdim]) + "," +
+                                              yLocal((+d[totalMetric] / (factor))) + ")";
+                                      if (d.totalMilliseconds == 0)
+                                          return "translate(" + xLocal(+d[xdim]) + "," + yLocal(0) + ")";
+                                      return "translate(" + xLocal(+d[xdim]) + "," +
+                                          yLocal((+d[totalMetric] / (d.totalMilliseconds))) + ")";
+                                  })
+                                  .attr("x", 3)
+                                  .attr("dy", "-.35em")
+                                  .text("User2");
+
+                          } else {
+  							//total time chart
+
+  							//label the lines, using the data value at the end of the line
+
+                              line1TextLocal
+                                  .datum(u1Data[u1Data.length - 1])
+                                  .attr("class", "label")
+                                  .attr("transform", function(d) {
+                                      return "translate(" + xLocal(+d[xdim]) + "," +
+                                          yLocal((+d[metric])) + ")";
+                                  })
+                                  .attr("x", 3)
+                                  .attr("dy", ".35em")
+                                  .text("User1");
+
+                              line2TextLocal
+                                  .datum(u2Data[u2Data.length - 1])
+                                  .attr("class", "label")
+                                  .attr("transform", function(d) {
+                                  	console.log(xdim+","+metric);
+                                  	console.log(d);
+                                  	console.log("translate(" + xLocal(+d[xdim]) + "," +
+                                          yLocal((+d[metric])) + ")");
+                                      return "translate(" + xLocal(+d[xdim]) + "," +
+                                          yLocal((+d[metric])) + ")";
+                                  })
+                                  .attr("x", 3)
+                                  .attr("dy", "-.35em")
+                                  .text("User2");
+                          }
+                          if (firstTime && !isTotal) {
+                          	//draw the y-axis
+                              yAxisSvgLocal.call(yAxisLocal);
+                              firstTime = false;
+                          } else {
+                          	//draw the y-axis
+                              yAxisSvgLocal.call(yAxisLocal);
+                              var m = metrics[xdim];
+
+                              //update the y-axis label, depending on the metrics used
+                              var ylabel;
+                              if (isTotal) ylabel = "Total Listening Time (milliseconds)";
+                              else ylabel = metrics["hour"][0].ylabel;
+
+                              m.forEach(function(d) {
+                                  if (d.name == metric) ylabel = d.ylabel;
+                              });
+                              yAxisTextLocal.text(ylabel);
+                          }
+
+                      }
+
+                  	//draw the total time chart
+                      showChartForMetric("totalMilliseconds", "hour");
+
+                  	//draw the metrics chart
+                      showChartForMetric(metrics["hour"][0].name, "hour");
+
+                  }); //User2 data
+              }); //User1 data
+          </script>
 </body>
 
 </html>
